@@ -50,7 +50,7 @@ impl ToSingleTree for ReOperator {
     fn to_syntax_tree(&self) -> SyntaxTree {
         let mut syntax = SyntaxTree::from_label(self.label());
         match self {
-            ReOperator::Char(c) => {}
+            ReOperator::Char(_ch) => {}
             ReOperator::Concat(left, right) => {
                 syntax.children.push(left.to_syntax_tree());
                 syntax.children.push(right.to_syntax_tree());
@@ -68,9 +68,9 @@ impl ToSingleTree for ReOperator {
     fn label(&self) -> String {
         match self {
             ReOperator::Char(c) => c.to_string(),
-            ReOperator::Concat(l, r) => "+".to_string(),
-            ReOperator::Or(l, r) => "|".to_string(),
-            ReOperator::KleeneStar(r) => "*".to_string(),
+            ReOperator::Concat(_, _) => "·".to_string(),
+            ReOperator::Or(_, _) => "|".to_string(),
+            ReOperator::KleeneStar(_) => "*".to_string(),
         }
     }
 }

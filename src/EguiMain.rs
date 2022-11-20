@@ -2,7 +2,7 @@ use eframe::egui;
 use egui::{emath, Frame, Pos2, Rect, Sense, Window};
 use crate::SyntaxTree::*;
 use crate::RegularExpression::*;
-#[macro_use]
+
 use crate::Log::*;
 
 pub struct EguiApp {
@@ -13,34 +13,21 @@ pub struct EguiApp {
 impl Default for EguiApp {
     fn default() -> Self {
         Self {
-            tree: ReOperator::Or(
-                Box::new(ReOperator::Concat(
-                    Box::new(ReOperator::Concat(
-                        Box::new(ReOperator::Char('a')),
-                        Box::new(ReOperator::Char('c')),
-                    )),
-                    Box::new(ReOperator::Concat(
-                        Box::new(ReOperator::Char('f')),
-                        Box::new(ReOperator::Char('g')),
-                    )),
-                )),
-                Box::new(ReOperator::Char('b')),
-            )
-            .to_syntax_tree(),
+            tree: ReOperator::Char('a').to_syntax_tree(),
             regex_text: String::new(),
         }
     }
 }
 
 impl EguiApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self::default()
     }
 }
 
 impl eframe::App for EguiApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let pointer_pos = { ctx.input().pointer.hover_pos() };
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let _pointer_pos = { ctx.input().pointer.hover_pos() };
         Window::new("settings panel").show(ctx, |ui| {
             ui.horizontal(
                 |ui | {
@@ -72,7 +59,7 @@ impl eframe::App for EguiApp {
                     Rect::from_min_size(Pos2::ZERO, response.rect.square_proportions()),
                     response.rect,
                 );
-                let from_screen = to_screen.inverse();
+                let _from_screen = to_screen.inverse();
                 let mh = painter.clip_rect().height();
                 let mw = painter.clip_rect().width();
                 let top_padding = painter.clip_rect().min;
