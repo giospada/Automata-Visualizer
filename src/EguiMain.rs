@@ -7,6 +7,7 @@ use crate::Log::*;
 
 pub struct EguiApp {
     tree: SyntaxTree,
+    regex_text: String,
 }
 
 impl Default for EguiApp {
@@ -26,6 +27,7 @@ impl Default for EguiApp {
                 Box::new(ReOperator::Char('b')),
             )
             .to_syntax_tree(),
+            regex_text: String::new(),
         }
     }
 }
@@ -43,8 +45,17 @@ impl eframe::App for EguiApp {
             ui.horizontal(
                 |ui | {
                     ui.label("inserisci la regex");
-                    let mut text="b|acfg";
-                    ui.text_edit_singleline(&mut text).on_hover_text("Enter a regular expression");
+                    // let response = ui.add(egui::TextEdit::singleline(&mut regex_text));
+                    let response = ui.text_edit_singleline(&mut self.regex_text).on_hover_text("Enter a regular expression");
+
+                    if response.lost_focus() {
+                        let tree = ReOperator::from_string(self.regex_text.clone());
+                        if let Ok(tree) = tree {
+                            self.tree = tree.to_syntax_tree();
+                        }
+
+                        // TODO: display error message if there is in window
+                    }
                 }
             );
             if ui.button("test log").clicked() {
