@@ -31,15 +31,13 @@ impl PartialEq for ReOperator {
 }
 
 impl ReOperator {
-    pub fn from_string(str: String) -> Result<ReOperator, Box<dyn Error>> {
+    pub fn from_string(str: &String) -> Result<ReOperator, Box<dyn Error>> {
+        if !has_valid_parentesis(str) {
+            return Err(Box::new(UnvalidParentesis {}));
+        }
+
         let mut chars = str.chars().peekable();
         let res = parse_rec(&mut chars)?;
-
-        if chars.peek().is_some() {
-            return Err(Box::new(InvalidTokenError::new(
-                "Invalid token, probably extra parentesis at the end.".to_string(),
-            )));
-        }
 
         Ok(*res)
     }
@@ -82,8 +80,6 @@ impl ToSingleTree for ReOperator {
 /// kleene is an operation on a single character, or on parens.
 fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
     let mut token = get_next_token(chars)?;
-
-    // if len is zero initialize parse tree to emtpy, else to first token
     let mut parse_tree;
 
     if token.len() == 0 && chars.peek() == Some(&'(') {
@@ -93,13 +89,12 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
         parse_tree = parse_token(token)?;
     }
 
-
     loop {
         match chars.peek() {
-            Some(c) => {
-                if !is_valid_char(*c) {
-                    return Err(Box::new(InvalidCharacter::new(*c)));
-                } else if *c == '(' {
+            Some(curr_char) => {
+                if !is_valid_char(*curr_char) {
+                    return Err(Box::new(InvalidCharacter::new(*curr_char)));
+                } else if *curr_char == '(' {
                     chars.next();
                     let next_tree = parse_rec(chars)?;
                     
@@ -110,7 +105,7 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
                     } else {
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
                     }
-                } else if *c == '|' {
+                } else if *curr_char == '|' {
                     chars.next();
                     if let ReOperator::Or(_, _) = &*parse_tree {
                         return Err(Box::new(InvalidTokenError::new(
@@ -120,7 +115,7 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
 
                     let next_tree = parse_rec(chars)?;
                     parse_tree = Box::new(ReOperator::Or(parse_tree, next_tree));
-                } else if *c == ')' {
+                } else if *curr_char == ')' {
                     chars.next();
                     break;
                 }
@@ -268,6 +263,22 @@ fn is_valid_char(c: char) -> bool {
     c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
 }
 
+fn has_valid_parentesis(str: &String) -> bool {
+    let mut open_parenthesis = 0;
+    for curr_char in str.chars() {
+        if curr_char == '(' {
+            open_parenthesis += 1;
+        } else if curr_char == ')' {
+            open_parenthesis -= 1;
+            if open_parenthesis < 0 {
+                return false;
+            }
+        }
+    }
+
+    open_parenthesis == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -376,7 +387,7 @@ mod tests {
         #[test]
         fn parse_and_parentesis() {
             let str = "a(b|c)".to_string();
-            let tree = ReOperator::from_string(str).unwrap();
+            let tree = ReOperator::from_string(&str).unwrap();
 
             let answer = ReOperator::Concat(
                 Box::new(ReOperator::Char('a')),
@@ -387,6 +398,24 @@ mod tests {
             );
 
             assert_eq!(tree, answer);
+        }
+
+        #[test]
+        fn parens_at_end_should_err() {
+            let str = "a(b|c".to_string();
+            let tree = ReOperator::from_string(&str);
+            assert!(tree.is_err());
+
+            let str = "a(b|c))".to_string();
+            let tree = ReOperator::from_string(&str);
+            assert!(tree.is_err());
+        }
+
+        #[test]
+        fn empty_brakets() {
+            let str = "a()".to_string();
+            let tree = ReOperator::from_string(&str);
+            assert!(!tree.is_err());
         }
     }
 }
