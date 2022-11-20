@@ -85,7 +85,7 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
 
     // if len is zero initialize parse tree to emtpy, else to first token
     let mut parse_tree;
-    
+
     if token.len() == 0 && chars.peek() == Some(&'(') {
         chars.next();
         parse_tree = parse_rec(chars)?;
@@ -177,35 +177,30 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
     while current_char_opt.is_some() {
         let current_char = current_char_opt.unwrap();
         let next_char = next_char_opt.unwrap_or(epsilon);
-        let mut has_advanced = false;
 
-        if next_char == '*' {
-            match current_char {
-                'a'..='z' | 'A'..='Z' | '0'..='9' => {
+        match current_char {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                if next_char == '*' {
                     let op = ReOperator::KleeneStar(Box::new(ReOperator::Char(current_char)));
                     tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(op)));
                     current_char_opt = chars.next();
                     next_char_opt = chars.next();
-
-                    has_advanced = true;
-                }
-                '*' => {
-                    return Err(Box::new(InvalidTokenError::new(
-                        "* cannot follow *".to_string(),
-                    )));
-                }
-                _ => {
-                    return Err(Box::new(InvalidTokenError::new(
-                        "Invalid character before *".to_string(),
-                    )));
+                } else {
+                    tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(ReOperator::Char(current_char))));
+                    current_char_opt = next_char_opt;
+                    next_char_opt = chars.next();
                 }
             }
-        } 
-        
-        if !has_advanced {
-            tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(ReOperator::Char(current_char))));
-            current_char_opt = next_char_opt;
-            next_char_opt = chars.next();
+            '*' => {
+                return Err(Box::new(InvalidTokenError::new(
+                    "cannot have start without valid alfabet".to_string(),
+                )));
+            }
+            _ => {
+                return Err(Box::new(InvalidTokenError::new(
+                    "Invalid character, only ([a-z]|[A-Z]|[0-9]|\\*)* is accepted".to_string(),
+                )));
+            }
         }
     }
 
@@ -381,9 +376,17 @@ mod tests {
         #[test]
         fn parse_and_parentesis() {
             let str = "a(b|c)".to_string();
-            let tree = parse(str).unwrap();
-            // Non so che albero dovrebbe venire :D
-            // TODO: finire il test con l'albero corretto
+            let tree = ReOperator::from_string(str).unwrap();
+
+            let answer = ReOperator::Concat(
+                Box::new(ReOperator::Char('a')),
+                Box::new(ReOperator::Or(
+                    Box::new(ReOperator::Char('b')),
+                    Box::new(ReOperator::Char('c')),
+                )),
+            );
+
+            assert_eq!(tree, answer);
         }
     }
 }
