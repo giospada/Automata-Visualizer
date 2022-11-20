@@ -1,79 +1,75 @@
 use eframe::egui;
-
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
-
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
-    #[cfg(target_arch = "wasm32")]
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-}
-#[cfg(not(target_arch = "wasm32"))]
-fn log(s: &str){
-    println!("{}",s);
-}
-
-use super::CoordUtil::CoordinateSystem;
-
-macro_rules! log{
-    ($($t:tt)*) => (log(&format!($($t)*)))
-}
-
-
+use egui::{emath, Frame, Pos2, Rect, Sense, Window};
+use crate::SyntaxTree::*;
+use crate::RegularExpression::*;
+#[macro_use]
+use crate::Log::*;
 
 pub struct EguiApp {
+    tree: SyntaxTree,
 }
 
 impl Default for EguiApp {
-    fn default() -> Self{
-        Self{
+    fn default() -> Self {
+        Self {
+            tree: ReOperator::Or(
+                Box::new(ReOperator::Concat(
+                    Box::new(ReOperator::Concat(
+                        Box::new(ReOperator::Char('a')),
+                        Box::new(ReOperator::Char('c')),
+                    )),
+                    Box::new(ReOperator::Concat(
+                        Box::new(ReOperator::Char('f')),
+                        Box::new(ReOperator::Char('g')),
+                    )),
+                )),
+                Box::new(ReOperator::Char('b')),
+            )
+            .to_syntax_tree(),
         }
     }
 }
 
-
 impl EguiApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
         Self::default()
     }
 }
 
-
-
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let pointer_pos={ctx.input().pointer.hover_pos()};
-        egui::Window::new("my_left_subpanel").show(ctx, |ui| {
-            ui.label("sub_panel");
-            if {ctx.wants_pointer_input()} {
-                ui.label(format!("{:?}",pointer_pos));
+        let pointer_pos = { ctx.input().pointer.hover_pos() };
+        Window::new("settings panel").show(ctx, |ui| {
+            ui.horizontal(
+                |ui | {
+                    ui.label("inserisci la regex");
+                    let mut text="b|acfg";
+                    ui.text_edit_singleline(&mut text).on_hover_text("Enter a regular expression");
+                }
+            );
+            if ui.button("test log").clicked() {
+                log!("test log");
             }
         });
-        
-        egui::Window::new("area").resizable(false).show(ctx, |ui| {
-            let painter=ui.painter();
-            use egui::Color32;
-            let coord=CoordinateSystem::from_clip_rect(painter.clip_rect());
 
-            
-            if {ctx.wants_pointer_input()} && coord.in_area_option(pointer_pos) {
-                log!("{:?}",pointer_pos);
-            }
-            
-            painter.circle_filled(
-                coord.to_cord(coord.max_x()/2.0,coord.max_y()/2.0), 
-                coord.max_y()/2.0, 
-                Color32::from_rgb(1,2,3)
-            );
-            ui.allocate_space(ui.available_size()); // put this LAST in your panel/window code
+        Window::new("Canvaxas").resizable(false).show(ctx, |ui| {
+            Frame::canvas(ui.style()).show(ui, |ui| {
+                let (mut response, painter) =
+                    ui.allocate_painter(ui.available_size_before_wrap(), Sense::drag());
+
+                let to_screen = emath::RectTransform::from_to(
+                    Rect::from_min_size(Pos2::ZERO, response.rect.square_proportions()),
+                    response.rect,
+                );
+                let from_screen = to_screen.inverse();
+                let mh = painter.clip_rect().height();
+                let mw = painter.clip_rect().width();
+                let top_padding = painter.clip_rect().min;
+                log!("mh: {}, mw: {}", mh, mw);
+                self.tree.position_tree(Pos2::new(mw, mh));
+                self.tree
+                    .draw_tree(&painter, top_padding.to_vec2(), &ui, &mut response);
+            });
         });
     }
 }
