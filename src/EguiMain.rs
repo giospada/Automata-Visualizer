@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui::{emath, Frame, Pos2, Rect, Sense, Window};
+use egui::{emath, Frame, Pos2, Rect, Sense, Window,Color32,RichText};
 use crate::SyntaxTree::*;
 use crate::RegularExpression::*;
 
@@ -8,6 +8,7 @@ use crate::Log::*;
 pub struct EguiApp {
     tree: SyntaxTree,
     regex_text: String,
+    parser_error:Option<String>
 }
 
 impl Default for EguiApp {
@@ -15,6 +16,7 @@ impl Default for EguiApp {
         Self {
             tree: ReOperator::Char('a').to_syntax_tree(),
             regex_text: String::new(),
+            parser_error:None
         }
     }
 }
@@ -37,14 +39,25 @@ impl eframe::App for EguiApp {
 
                     if response.lost_focus() {
                         let tree = ReOperator::from_string(self.regex_text.clone());
-                        if let Ok(tree) = tree {
-                            self.tree = tree.to_syntax_tree();
-                        }
-
+                        match tree {
+                            Ok(tree) => {
+                                self.tree = tree.to_syntax_tree();
+                                self.parser_error=None;
+                            },
+                            Err(err) =>{
+                                self.parser_error=Some(err.to_string());
+                            }
+                        };
+                        //if let Ok(tree) = tree {
+                            //self.tree = tree.to_syntax_tree();
+                        //}
                         // TODO: display error message if there is in window
                     }
                 }
             );
+            if let Some(err)= &self.parser_error {
+                ui.label(RichText::new(err).color(Color32::RED));
+            }
             if ui.button("test log").clicked() {
                 log!("test log");
             }
