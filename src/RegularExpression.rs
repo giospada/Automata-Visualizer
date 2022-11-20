@@ -410,5 +410,12 @@ mod tests {
             let tree = ReOperator::from_string(&str);
             assert!(tree.is_err());
         }
+
+        #[test]
+        fn empty_brakets() {
+            let str = "a()".to_string();
+            let tree = ReOperator::from_string(&str);
+            assert!(!tree.is_err());
+        }
     }
 }
