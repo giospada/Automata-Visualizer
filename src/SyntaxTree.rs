@@ -4,7 +4,6 @@ use egui::{Color32, Pos2, Rect, Vec2,Stroke};
 #[must_use]
 use crate::Log::*;
 
-
 pub struct SyntaxTree {
     pub label: String,
     pub pos: Pos2,
