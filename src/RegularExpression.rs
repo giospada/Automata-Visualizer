@@ -30,6 +30,21 @@ impl PartialEq for ReOperator {
     }
 }
 
+impl ReOperator {
+    pub fn from_string(str: String) -> Result<ReOperator, Box<dyn Error>> {
+        let mut chars = str.chars().peekable();
+        let res = parse_rec(&mut chars)?;
+
+        if chars.peek().is_some() {
+            return Err(Box::new(InvalidTokenError::new(
+                "Invalid token, probably extra parentesis at the end.".to_string(),
+            )));
+        }
+
+        Ok(*res)
+    }
+}
+
 
 impl ToSingleTree for ReOperator {
     fn to_syntax_tree(&self) -> SyntaxTree {
@@ -61,44 +76,42 @@ impl ToSingleTree for ReOperator {
 }
 
 
-pub fn parse(mut str: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
-    str.push(')'); // end character for the parse.
-    let mut chars = str.chars().peekable();
-    let res = parse_rec(&mut chars)?;
-
-    if chars.peek().is_some() {
-        return Err(Box::new(InvalidTokenError::new(
-            "Invalid token, probably extra parentesis at the end.".to_string(),
-        )));
-    }
-
-    Ok(res)
-}
-
 /// parse until closing parens or end of string
 /// concatenation is left associative
 /// or is right associative
 /// kleene is an operation on a single character, or on parens.
 fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
     let mut token = get_next_token(chars)?;
-    let mut parse_tree = parse_token(token)?;
+
+    // if len is zero initialize parse tree to emtpy, else to first token
+    let mut parse_tree;
+    
+    if token.len() == 0 && chars.peek() == Some(&'(') {
+        chars.next();
+        parse_tree = parse_rec(chars)?;
+    } else {
+        parse_tree = parse_token(token)?;
+    }
+
 
     loop {
-        match chars.next() {
+        match chars.peek() {
             Some(c) => {
-                if !is_valid_char(c) {
-                    return Err(Box::new(InvalidCharacter::new(c)));
-                } else if c == '(' {
+                if !is_valid_char(*c) {
+                    return Err(Box::new(InvalidCharacter::new(*c)));
+                } else if *c == '(' {
+                    chars.next();
                     let next_tree = parse_rec(chars)?;
                     
-                    if (chars.peek() == Some(&'*')) {
+                    if chars.peek() == Some(&'*') {
                         chars.next();
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, 
                             Box::new(ReOperator::KleeneStar(next_tree))));
                     } else {
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
                     }
-                } else if c == '|' {
+                } else if *c == '|' {
+                    chars.next();
                     if let ReOperator::Or(_, _) = &*parse_tree {
                         return Err(Box::new(InvalidTokenError::new(
                             "Invalid token, cannot have two or operators in a row.".to_string(),
@@ -107,7 +120,8 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
 
                     let next_tree = parse_rec(chars)?;
                     parse_tree = Box::new(ReOperator::Or(parse_tree, next_tree));
-                } else if c == ')' {
+                } else if *c == ')' {
+                    chars.next();
                     break;
                 }
 
@@ -141,14 +155,24 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
     let epsilon = '\0';
     let mut chars = token.chars();
     let mut current_char_opt = chars.next();
+    let mut next_char_opt = chars.next();
     
     if !is_valid_char(current_char_opt.unwrap()) {
         return Err(Box::new(InvalidTokenError::new("Invalid starting char".to_string())));
     }
 
-    let mut tree_top = Box::new(ReOperator::Char(current_char_opt.unwrap())); // NOTE: better way to do this?
-    current_char_opt = chars.next();
-    let mut next_char_opt = chars.next();
+    let mut tree_top ;
+    
+    if next_char_opt == Some('*') {
+        tree_top = Box::new(ReOperator::KleeneStar(Box::new(ReOperator::Char(current_char_opt.unwrap()))));
+        current_char_opt = chars.next();
+        next_char_opt = chars.next();
+    } else {
+        tree_top = Box::new(ReOperator::Char(current_char_opt.unwrap()));
+        current_char_opt = next_char_opt;
+        next_char_opt = chars.next();
+    }
+
 
     while current_char_opt.is_some() {
         let current_char = current_char_opt.unwrap();
