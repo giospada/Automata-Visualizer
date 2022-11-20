@@ -76,6 +76,9 @@ pub fn parse(mut str: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
 }
 
 /// parse until closing parens or end of string
+/// concatenation is left associative
+/// or is right associative
+/// kleene is an operation on a single character, or on parens.
 fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
     let mut token = get_next_token(chars)?;
     let mut parse_tree = parse_token(token)?;
@@ -96,6 +99,12 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
                     }
                 } else if c == '|' {
+                    if let ReOperator::Or(_, _) = &*parse_tree {
+                        return Err(Box::new(InvalidTokenError::new(
+                            "Invalid token, cannot have two or operators in a row.".to_string(),
+                        )));
+                    }
+
                     let next_tree = parse_rec(chars)?;
                     parse_tree = Box::new(ReOperator::Or(parse_tree, next_tree));
                 } else if c == ')' {
@@ -125,8 +134,8 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
 fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
     if token.len() == 0 {
         return Err(Box::new(InvalidTokenError::new("Empty token".to_string())));
-    } else if token.starts_with(&['*', '|']) {
-        return Err(Box::new(InvalidTokenError::new("token can't start with * or |".to_string())));
+    } else if token.starts_with("*") {
+        return Err(Box::new(InvalidTokenError::new("token can't start with *".to_string())));
     }
 
     let epsilon = '\0';
@@ -156,9 +165,9 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
 
                     has_advanced = true;
                 }
-                '|' | '*' => {
+                '*' => {
                     return Err(Box::new(InvalidTokenError::new(
-                        "* cannot follow | or *".to_string(),
+                        "* cannot follow *".to_string(),
                     )));
                 }
                 _ => {
@@ -169,30 +178,6 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
             }
         } 
         
-        if current_char == '|' {
-            match next_char {
-                'a'..='z' | 'A'..='Z' | '0'..='9' => {
-                    let op = ReOperator::Or(tree_top, Box::new(ReOperator::Char(next_char)));
-                    tree_top = Box::new(op);
-
-                    current_char_opt = chars.next();
-                    next_char_opt = chars.next();
-
-                    has_advanced = true;
-                }
-                '|' | '*' => {
-                    return Err(Box::new(InvalidTokenError::new(
-                        "| cannot be followed by | or *".to_string(),
-                    )));
-                }
-                _ => {
-                    return Err(Box::new(InvalidTokenError::new(
-                        "Invalid or empty character after |".to_string(),
-                    )));
-                }
-            }
-        }
-
         if !has_advanced {
             tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(ReOperator::Char(current_char))));
             current_char_opt = next_char_opt;
@@ -359,15 +344,8 @@ mod tests {
         }
 
         #[test]
-        fn error_double_or() {
-            let token = "a|b||c".to_string();
-            let tree = parse_token(token);
-            assert!(tree.is_err());
-        }
-
-        #[test]
         fn error_double_star() {
-            let token = "a|b**c".to_string();
+            let token = "ab**c".to_string();
             let tree = parse_token(token);
             assert!(tree.is_err());
         }
