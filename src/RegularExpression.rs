@@ -1,5 +1,6 @@
 use crate::SyntaxTree::*;
 use crate::Error::*;
+use crate::Log::log;
 use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -32,12 +33,13 @@ impl PartialEq for ReOperator {
 
 impl ReOperator {
     pub fn from_string(str: &String) -> Result<ReOperator, Box<dyn Error>> {
-        if !has_valid_parentesis(str) {
+        let mut chars = str.chars().peekable();
+        let mut num_parens = 0;
+        let res = parse_rec(&mut chars, &mut num_parens)?;
+
+        if num_parens != 0 {
             return Err(Box::new(UnvalidParentesis {}));
         }
-
-        let mut chars = str.chars().peekable();
-        let res = parse_rec(&mut chars)?;
 
         Ok(*res)
     }
@@ -78,13 +80,24 @@ impl ToSingleTree for ReOperator {
 /// concatenation is left associative
 /// or is right associative
 /// kleene is an operation on a single character, or on parens.
-fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
+fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<ReOperator>, Box<dyn Error>> {
+    if open_parens < &mut 0 {
+        return Err(Box::new(UnvalidParentesis {}));
+    }
+
     let mut token = get_next_token(chars)?;
     let mut parse_tree;
+    let curr_parentesis = open_parens.clone();
 
     if token.len() == 0 && chars.peek() == Some(&'(') {
         chars.next();
-        parse_tree = parse_rec(chars)?;
+        *open_parens += 1;
+        parse_tree = parse_rec(chars, open_parens)?;
+
+        if chars.peek() == Some(&'*') {
+            chars.next();
+            parse_tree = Box::new(ReOperator::KleeneStar(parse_tree));
+        } 
     } else {
         parse_tree = parse_token(token)?;
     }
@@ -96,7 +109,8 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
                     return Err(Box::new(InvalidCharacter::new(*curr_char)));
                 } else if *curr_char == '(' {
                     chars.next();
-                    let next_tree = parse_rec(chars)?;
+                    *open_parens += 1;
+                    let next_tree = parse_rec(chars, open_parens)?;
                     
                     if chars.peek() == Some(&'*') {
                         chars.next();
@@ -112,11 +126,17 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
                             "Invalid token, cannot have two or operators in a row.".to_string(),
                         )));
                     }
-
-                    let next_tree = parse_rec(chars)?;
+                    
+                    // può ritornare solamente per ")" oppure fine stringa
+                    let next_tree = parse_rec(chars, open_parens)?;
                     parse_tree = Box::new(ReOperator::Or(parse_tree, next_tree));
+
+                    if curr_parentesis > *open_parens {
+                        return Ok(parse_tree);
+                    }
                 } else if *curr_char == ')' {
                     chars.next();
+                    *open_parens -= 1;
                     break;
                 }
 
@@ -415,6 +435,14 @@ mod tests {
         fn empty_brakets() {
             let str = "a()".to_string();
             let tree = ReOperator::from_string(&str);
+            assert!(tree.is_err());
+        }
+
+        #[test]
+        fn brakets_with_star() {
+            let str = "(a|b)*".to_string();
+            let tree = ReOperator::from_string(&str);
+            log!("{:?}", tree);
             assert!(!tree.is_err());
         }
     }

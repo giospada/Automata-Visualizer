@@ -38,7 +38,7 @@ impl eframe::App for EguiApp {
                     let response = ui.text_edit_singleline(&mut self.regex_text).on_hover_text("Enter a regular expression");
 
                     if response.lost_focus() {
-                        let tree = ReOperator::from_string(self.regex_text.clone());
+                        let tree = ReOperator::from_string(&self.regex_text);
                         match tree {
                             Ok(tree) => {
                                 self.tree = tree.to_syntax_tree();
