@@ -9,7 +9,7 @@ pub enum ReOperator {
     Char(char),
     Concat(Box<ReOperator>, Box<ReOperator>),
     Or(Box<ReOperator>, Box<ReOperator>),
-    KeeneStar(Box<ReOperator>),
+    KleeneStar(Box<ReOperator>),
 }
 
 impl PartialEq for ReOperator {
@@ -20,7 +20,7 @@ impl PartialEq for ReOperator {
                 b11 == b21 && b12 == b22
             }
             (ReOperator::Or(b11, b12), ReOperator::Or(b21, b22)) => b11 == b21 && b12 == b22,
-            (ReOperator::KeeneStar(b1), ReOperator::KeeneStar(b2)) => b1 == b2,
+            (ReOperator::KleeneStar(b1), ReOperator::KleeneStar(b2)) => b1 == b2,
             _ => false,
         }
     }
@@ -44,7 +44,7 @@ impl ToSingleTree for ReOperator {
                 syntax.children.push(left.to_syntax_tree());
                 syntax.children.push(right.to_syntax_tree());
             }
-            ReOperator::KeeneStar(op) => {
+            ReOperator::KleeneStar(op) => {
                 syntax.children.push(op.to_syntax_tree());
             }
         }
@@ -55,7 +55,7 @@ impl ToSingleTree for ReOperator {
             ReOperator::Char(c) => c.to_string(),
             ReOperator::Concat(l, r) => "+".to_string(),
             ReOperator::Or(l, r) => "|".to_string(),
-            ReOperator::KeeneStar(r) => "*".to_string(),
+            ReOperator::KleeneStar(r) => "*".to_string(),
         }
     }
 }
@@ -94,7 +94,7 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
                     if (chars.peek() == Some(&'*')) {
                         chars.next();
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, 
-                            Box::new(ReOperator::KeeneStar(next_tree))));
+                            Box::new(ReOperator::KleeneStar(next_tree))));
                     } else {
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
                     }
@@ -158,7 +158,7 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
         if next_char == '*' {
             match current_char {
                 'a'..='z' | 'A'..='Z' | '0'..='9' => {
-                    let op = ReOperator::KeeneStar(Box::new(ReOperator::Char(current_char)));
+                    let op = ReOperator::KleeneStar(Box::new(ReOperator::Char(current_char)));
                     tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(op)));
                     current_char_opt = chars.next();
                     next_char_opt = chars.next();
@@ -335,7 +335,7 @@ mod tests {
                 ReOperator::Concat(
                 Box::new(ReOperator::Concat(
                     Box::new(ReOperator::Char('d')),
-                    Box::new(ReOperator::KeeneStar(
+                    Box::new(ReOperator::KleeneStar(
                         Box::new(ReOperator::Char('a')),
                     )),
                 )),
