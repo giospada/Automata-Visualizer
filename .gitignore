@@ -1,1 +1,4 @@
 /target
+dist/*
+assets/*
+*/index.html/*
