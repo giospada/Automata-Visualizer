@@ -96,10 +96,10 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
 
     loop {
         match chars.peek() {
-            Some(c) => {
-                if !is_valid_char(*c) {
-                    return Err(Box::new(InvalidCharacter::new(*c)));
-                } else if *c == '(' {
+            Some(curr_char) => {
+                if !is_valid_char(*curr_char) {
+                    return Err(Box::new(InvalidCharacter::new(*curr_char)));
+                } else if *curr_char == '(' {
                     chars.next();
                     let next_tree = parse_rec(chars)?;
                     
@@ -110,7 +110,7 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
                     } else {
                         parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
                     }
-                } else if *c == '|' {
+                } else if *curr_char == '|' {
                     chars.next();
                     if let ReOperator::Or(_, _) = &*parse_tree {
                         return Err(Box::new(InvalidTokenError::new(
@@ -120,7 +120,7 @@ fn parse_rec(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Err
 
                     let next_tree = parse_rec(chars)?;
                     parse_tree = Box::new(ReOperator::Or(parse_tree, next_tree));
-                } else if *c == ')' {
+                } else if *curr_char == ')' {
                     chars.next();
                     break;
                 }
