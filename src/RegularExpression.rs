@@ -181,59 +181,43 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
         return Err(Box::new(InvalidTokenError::new("token can't start with *".to_string())));
     }
 
-    let epsilon = '\0';
-    let mut chars = token.chars();
-    let mut current_char_opt = chars.next();
-    let mut next_char_opt = chars.next();
+    let mut chars = token.chars().peekable();
+    let mut tree_top = get_next_node(&mut chars)?;
     
-    if !is_valid_char(current_char_opt.unwrap()) {
-        return Err(Box::new(InvalidTokenError::new("Invalid starting char".to_string())));
-    }
-
-    let mut tree_top ;
-    
-    if next_char_opt == Some('*') {
-        tree_top = Box::new(ReOperator::KleeneStar(Box::new(ReOperator::Char(current_char_opt.unwrap()))));
-        current_char_opt = chars.next();
-        next_char_opt = chars.next();
-    } else {
-        tree_top = Box::new(ReOperator::Char(current_char_opt.unwrap()));
-        current_char_opt = next_char_opt;
-        next_char_opt = chars.next();
-    }
-
-
-    while current_char_opt.is_some() {
-        let current_char = current_char_opt.unwrap();
-        let next_char = next_char_opt.unwrap_or(epsilon);
-
-        match current_char {
-            'a'..='z' | 'A'..='Z' | '0'..='9' => {
-                if next_char == '*' {
-                    let op = ReOperator::KleeneStar(Box::new(ReOperator::Char(current_char)));
-                    tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(op)));
-                    current_char_opt = chars.next();
-                    next_char_opt = chars.next();
-                } else {
-                    tree_top = Box::new(ReOperator::Concat(tree_top, Box::new(ReOperator::Char(current_char))));
-                    current_char_opt = next_char_opt;
-                    next_char_opt = chars.next();
-                }
-            }
-            '*' => {
-                return Err(Box::new(InvalidTokenError::new(
-                    "cannot have start without valid alfabet".to_string(),
-                )));
-            }
-            _ => {
-                return Err(Box::new(InvalidTokenError::new(
-                    "Invalid character, only ([a-z]|[A-Z]|[0-9]|\\*)* is accepted".to_string(),
-                )));
-            }
-        }
+    while chars.peek().is_some() {
+        tree_top = Box::new(ReOperator::Concat(tree_top, get_next_node(&mut chars)?));
     }
 
     Ok(tree_top)
+}
+
+/// assume that at least one char is still available.
+fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
+    let curr_char = chars.next().unwrap();
+    if !is_valid_char(curr_char) {
+        return Err(Box::new(InvalidCharacter::new(curr_char)));
+    }
+
+    match curr_char {
+        'a'..='z' | 'A'..='Z' | '0'..='9' => {
+            if chars.peek() == Some(&'*') {
+                chars.next();
+                return Ok(Box::new(ReOperator::KleeneStar(Box::new(ReOperator::Char(curr_char)))));
+            } else {
+                return Ok(Box::new(ReOperator::Char(curr_char)));
+            }
+        }
+        '*' => {
+            return Err(Box::new(InvalidTokenError::new(
+                "cannot have start without valid alfabet".to_string(),
+            )));
+        }
+        _ => {
+            return Err(Box::new(InvalidTokenError::new(
+                "Invalid character, only ([a-z]|[A-Z]|[0-9]|\\*)* is accepted".to_string(),
+            )));
+        }
+    }
 }
 
 fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>> {
