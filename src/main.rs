@@ -1,8 +1,10 @@
+#![allow(non_snake_case)]
 #[macro_use]
 mod Log;
 mod EguiMain;
 mod SyntaxTree;
 mod RegularExpression;
+mod Error;
 use EguiMain::EguiApp;
 
 // When compiling natively:

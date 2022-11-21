@@ -1,9 +1,5 @@
-use eframe::emath::RectTransform;
-use egui::{Color32, Pos2, Rect, Vec2,Stroke};
-
-#[must_use]
+use egui::{Color32, Pos2, Vec2,Stroke};
 use crate::Log::*;
-
 
 pub struct SyntaxTree {
     pub label: String,
@@ -56,7 +52,7 @@ impl SyntaxTree {
         response: &mut egui::Response,
     ) {
         for child in &self.children {
-            painter.line_segment([self.pos+padding,child.pos+padding],Stroke::new((5 as f32) ,Color32::YELLOW) );
+            painter.line_segment([self.pos+padding,child.pos+padding],Stroke::new(5 as f32,Color32::YELLOW) );
             child.draw_tree(painter, padding, ui, response);
         }
 
@@ -98,7 +94,7 @@ impl SyntaxTree {
             }
         }
 
-        pub fn drow() {
+        pub fn draw() {
             todo!();
         }
     }
