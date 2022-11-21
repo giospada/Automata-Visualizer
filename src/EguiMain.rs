@@ -60,6 +60,8 @@ impl eframe::App for EguiApp {
         syntaxTree.show(ctx, |ui| {
             Frame::canvas(ui.style()).show(ui, |ui| {
                 if let Some(tree) = &mut self.re.tree { 
+                    // va ricalcolato solo se abbiamo cambiato i parametri quindi possiamo cachare
+                    // todo!(" ");
                     let scren_size=
                         tree.position_tree(Pos2{x:self.re.padding_x,y:self.re.padding_y},self.re.size_node);
                     let (mut response, painter) =
@@ -69,6 +71,7 @@ impl eframe::App for EguiApp {
                         Rect::from_min_size(Pos2::ZERO, response.rect.size()),
                         response.rect,
                     ); 
+
                     tree.draw_tree(&painter, to_screen, &ui, &mut response);
                 }
             })

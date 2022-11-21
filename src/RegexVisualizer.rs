@@ -20,9 +20,9 @@ impl RegexVisualizer{
             regex_text:String::new(),
             regex_error:None,
             open:false,
-            padding_x:20.,
-            padding_y:20.,
-            size_node:20.
+            padding_x:40.,
+            padding_y:40.,
+            size_node:30.
         }
     }
 
