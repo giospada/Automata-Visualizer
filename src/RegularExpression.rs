@@ -238,63 +238,8 @@ fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>>
     Ok(token)
 }
 
-/// divides the string into tokens, so it drops the parenthesis
-/// TODO: questa è la prima cosa che ho fatto, non per ora la tengo
-/// Non so se servirà!
-#[allow(dead_code)]
-fn tokenize(str: String) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut tokens = Vec::new();
-    let mut token = String::new();
-
-    let mut open_parenthesis = 0;
-    for curr_char in str.chars() {
-        if !is_valid_char(curr_char) {
-            return Err(Box::new(InvalidCharacter::new(curr_char)));
-        }
-
-        if curr_char == '(' {
-            open_parenthesis += 1;
-        } else if curr_char == ')' {
-            open_parenthesis -= 1;
-            if token.len() > 0 {
-                tokens.push(token);
-                token = String::new();
-            }
-
-            if open_parenthesis < 0 {
-                // NOTE: maybe we should return the index of error parens??
-                return Err(Box::new(UnvalidParentesis {}));
-            }
-        } else {
-            token.push(curr_char);
-        }
-    }
-
-    if open_parenthesis > 0 {
-        return Err(Box::new(UnvalidParentesis {}));
-    }
-
-    Ok(tokens)
-}
-
 fn is_valid_char(c: char) -> bool {
     c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
-}
-
-fn has_valid_parentesis(str: &String) -> bool {
-    let mut open_parenthesis = 0;
-    for curr_char in str.chars() {
-        if curr_char == '(' {
-            open_parenthesis += 1;
-        } else if curr_char == ')' {
-            open_parenthesis -= 1;
-            if open_parenthesis < 0 {
-                return false;
-            }
-        }
-    }
-
-    open_parenthesis == 0
 }
 
 #[cfg(test)]
