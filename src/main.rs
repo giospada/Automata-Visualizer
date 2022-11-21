@@ -5,6 +5,7 @@ mod EguiMain;
 mod SyntaxTree;
 mod RegularExpression;
 mod Error;
+mod NFA;
 use EguiMain::EguiApp;
 
 // When compiling natively:
