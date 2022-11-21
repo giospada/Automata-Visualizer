@@ -209,7 +209,7 @@ fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn
         }
         '*' => {
             return Err(Box::new(InvalidTokenError::new(
-                "cannot have start without valid alfabet".to_string(),
+                "cannot have Kleene star without valid alphabet char".to_string(),
             )));
         }
         _ => {
