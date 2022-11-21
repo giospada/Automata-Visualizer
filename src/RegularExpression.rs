@@ -75,7 +75,6 @@ impl ToSingleTree for ReOperator {
     }
 }
 
-
 /// parse until closing parens or end of string
 /// concatenation is left associative
 /// or is right associative
@@ -85,75 +84,90 @@ fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<R
         return Err(Box::new(UnvalidParentesis {}));
     }
 
-    let mut token = get_next_token(chars)?;
-    let mut parse_tree;
+    let mut parse_tree = elaborate_next_token(chars, None, open_parens)?;
     let curr_parentesis = open_parens.clone();
 
-    if token.len() == 0 && chars.peek() == Some(&'(') {
-        chars.next();
-        *open_parens += 1;
-        parse_tree = parse_rec(chars, open_parens)?;
+    while chars.peek().is_some() {
+        parse_tree = elaborate_next_token(chars, Some(parse_tree), open_parens)?;
 
-        if chars.peek() == Some(&'*') {
-            chars.next();
-            parse_tree = Box::new(ReOperator::KleeneStar(parse_tree));
-        } 
-    } else {
-        parse_tree = parse_token(token)?;
-    }
-
-    loop {
-        match chars.peek() {
-            Some(curr_char) => {
-                if !is_valid_char(*curr_char) {
-                    return Err(Box::new(InvalidCharacter::new(*curr_char)));
-                } else if *curr_char == '(' {
-                    chars.next();
-                    *open_parens += 1;
-                    let next_tree = parse_rec(chars, open_parens)?;
-                    
-                    if chars.peek() == Some(&'*') {
-                        chars.next();
-                        parse_tree = Box::new(ReOperator::Concat(parse_tree, 
-                            Box::new(ReOperator::KleeneStar(next_tree))));
-                    } else {
-                        parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
-                    }
-                } else if *curr_char == '|' {
-                    chars.next();
-                    if let ReOperator::Or(_, _) = &*parse_tree {
-                        return Err(Box::new(InvalidTokenError::new(
-                            "Invalid token, cannot have two or operators in a row.".to_string(),
-                        )));
-                    }
-                    
-                    // può ritornare solamente per ")" oppure fine stringa
-                    let next_tree = parse_rec(chars, open_parens)?;
-                    parse_tree = Box::new(ReOperator::Or(parse_tree, next_tree));
-
-                    if curr_parentesis > *open_parens {
-                        return Ok(parse_tree);
-                    }
-                } else if *curr_char == ')' {
-                    chars.next();
-                    *open_parens -= 1;
-                    break;
-                }
-
-                token = get_next_token(chars)?;
-
-                // quando è vuoto vuol dire che il prossimo carattere è (, ), | o
-                // fine stringa, quindi non devo fare nulla, lo gestisco alla prossima iterazione.
-                if token.len() > 0 {
-                    let next_tree = parse_token(token)?;
-                    parse_tree = Box::new(ReOperator::Concat(parse_tree, next_tree));
-                }
-            }
-            None => break,
+        if curr_parentesis > open_parens.clone() {
+            break;
         }
     }
 
     Ok(parse_tree)
+}
+
+fn elaborate_next_token(chars: &mut Peekable<Chars>, mut tree: Option<Box<ReOperator>>, open_parens: &mut i32) -> Result<Box<ReOperator>, Box<dyn Error>> {
+    if chars.peek().is_none() {
+        if let Some(t) = tree {
+            return Ok(t);
+        } else {
+            return Err(Box::new(InvalidTokenError::new("Empty string is not accepted".to_string())));
+        }
+    }
+
+    let curr_char = chars.peek().unwrap();
+    if !is_valid_char(*curr_char) {
+        return Err(Box::new(InvalidCharacter::new(*curr_char)));
+    } 
+    
+    if *curr_char == '(' {
+        chars.next();
+        *open_parens += 1;
+        let next_tree = parse_rec(chars, open_parens)?;
+        
+        if chars.peek() == Some(&'*') {
+            chars.next();
+            if let Some(parse_tree) = tree {
+                tree = Some(Box::new(ReOperator::Concat(parse_tree, 
+                    Box::new(ReOperator::KleeneStar(next_tree)))));
+            } else {
+                tree = Some(Box::new(ReOperator::KleeneStar(next_tree)));
+            }
+        } else if let Some(parse_tree) = tree {
+            tree = Some(Box::new(ReOperator::Concat(parse_tree, next_tree)));
+        } else {
+            tree = Some(next_tree);
+        }
+    } else if *curr_char == '|' {
+        chars.next();
+        
+        if let Some(parse_tree) = tree {
+            // può ritornare solamente per ")" oppure fine stringa
+            let next_tree = parse_rec(chars, open_parens)?;
+            tree = Some(Box::new(ReOperator::Or(parse_tree, next_tree)));
+        } else {
+            return Err(Box::new(InvalidTokenError::new(
+                "Invalid token, cannot begin with |".to_string(),
+            )));
+        }
+    } else if *curr_char == ')' {
+        chars.next();
+        *open_parens -= 1;
+    } else {
+        let token = get_next_token(chars)?;
+
+        // quando è vuoto vuol dire che il prossimo carattere è (, ), | o
+        // fine stringa, quindi non devo fare nulla, lo gestisco alla prossima iterazione.
+        if token.len() > 0 {
+            let next_tree = parse_token(token)?;
+
+            if let Some(parse_tree) = tree {
+                tree = Some(Box::new(ReOperator::Concat(parse_tree, next_tree)));
+            } else {
+                tree = Some(next_tree);
+            }
+        }
+    }
+
+    if let Some(parse_tree) = tree {
+        Ok(parse_tree)
+    } else {
+        Err(Box::new(InvalidTokenError::new(
+            "Empty token Error".to_string(),
+        )))
+    }
 }
 
 /// token is a valid regular expression without parenthesis nor Or operator
