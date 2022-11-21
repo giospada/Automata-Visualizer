@@ -2,21 +2,18 @@ use eframe::egui;
 use egui::{emath, Frame, Pos2, Rect, Sense, Window,Color32,RichText};
 use crate::SyntaxTree::*;
 use crate::RegularExpression::*;
+use crate::RegexVisualizer::*;
 
 use crate::Log::*;
 
 pub struct EguiApp {
-    tree: SyntaxTree,
-    regex_text: String,
-    parser_error:Option<String>
+    re:RegexVisualizer,
 }
 
 impl Default for EguiApp {
     fn default() -> Self {
         Self {
-            tree: ReOperator::Char('a').to_syntax_tree(),
-            regex_text: String::new(),
-            parser_error:None
+            re:RegexVisualizer::new(),
         }
     }
 }
@@ -25,62 +22,56 @@ impl EguiApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self::default()
     }
+
 }
+
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let _pointer_pos = { ctx.input().pointer.hover_pos() };
-        Window::new("settings panel").show(ctx, |ui| {
+        egui::SidePanel::left("Main").show(ctx, |ui| {
+            ui.spacing_mut().item_spacing.y=6.; 
+            ui.heading("Regular Expression");
             ui.horizontal(
                 |ui | {
                     ui.label("inserisci la regex");
-                    // let response = ui.add(egui::TextEdit::singleline(&mut regex_text));
-                    let response = ui.text_edit_singleline(&mut self.regex_text).on_hover_text("Enter a regular expression");
-
-                    if response.lost_focus() {
-                        let tree = ReOperator::from_string(&self.regex_text);
-                        match tree {
-                            Ok(tree) => {
-                                self.tree = tree.to_syntax_tree();
-                                self.parser_error=None;
-                            },
-                            Err(err) =>{
-                                self.parser_error=Some(err.to_string());
-                            }
-                        };
-                        //if let Ok(tree) = tree {
-                            //self.tree = tree.to_syntax_tree();
-                        //}
-                        // TODO: display error message if there is in window
-                    }
+                    ui.text_edit_singleline(&mut self.re.regex_text).on_hover_text("Enter a regular expression");
                 }
             );
-            if let Some(err)= &self.parser_error {
+
+            if ui.button("Generate SyntaxTree").clicked() { 
+                self.re.generate_tree();                
+            }
+
+            if let Some(err)= &self.re.regex_error {
                 ui.label(RichText::new(err).color(Color32::RED));
             }
-            if ui.button("test log").clicked() {
-                log!("test log");
-            }
+
+            ui.collapsing("syntax tree visualization option",|ui|{
+                ui.add(egui::Slider::new(&mut self.re.padding_x,10.0..=100.0).text("padding x:"));
+                ui.add(egui::Slider::new(&mut self.re.padding_y,10.0..=100.0).text("padding y:"));
+                ui.add(egui::Slider::new(&mut self.re.size_node,10.0..=100.0).text("node size:"));
+            });
         });
 
-        Window::new("Canvaxas").resizable(false).show(ctx, |ui| {
+        self.re.check_open();
+        let syntaxTree= Window::new("SyntaxTree");
+        let syntaxTree = syntaxTree.open(&mut self.re.open);
+        let syntaxTree = syntaxTree.scroll2([true,true]);
+        syntaxTree.show(ctx, |ui| {
             Frame::canvas(ui.style()).show(ui, |ui| {
-                let (mut response, painter) =
-                    ui.allocate_painter(ui.available_size_before_wrap(), Sense::drag());
+                if let Some(tree) = &mut self.re.tree { 
+                    let scren_size=
+                        tree.position_tree(Pos2{x:self.re.padding_x,y:self.re.padding_y},self.re.size_node);
+                    let (mut response, painter) =
+                        ui.allocate_painter(scren_size, egui::Sense::drag());
 
-                let to_screen = emath::RectTransform::from_to(
-                    Rect::from_min_size(Pos2::ZERO, response.rect.square_proportions()),
-                    response.rect,
-                );
-                let _from_screen = to_screen.inverse();
-                let mh = painter.clip_rect().height();
-                let mw = painter.clip_rect().width();
-                let top_padding = painter.clip_rect().min;
-                log!("mh: {}, mw: {}", mh, mw);
-                self.tree.position_tree(Pos2::new(mw, mh));
-                self.tree
-                    .draw_tree(&painter, top_padding.to_vec2(), &ui, &mut response);
-            });
+                    let to_screen = emath::RectTransform::from_to(
+                        Rect::from_min_size(Pos2::ZERO, response.rect.size()),
+                        response.rect,
+                    ); 
+                    tree.draw_tree(&painter, to_screen, &ui, &mut response);
+                }
+            })
         });
     }
 }

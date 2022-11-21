@@ -4,6 +4,7 @@ mod Log;
 mod EguiMain;
 mod SyntaxTree;
 mod RegularExpression;
+mod RegexVisualizer;
 mod Error;
 mod NFA;
 use EguiMain::EguiApp;

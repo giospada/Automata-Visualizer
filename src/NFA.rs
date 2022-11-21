@@ -1,7 +1,7 @@
 use crate::RegularExpression as RE;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct NFA {
     num_states: usize,
     start_state: usize,
