@@ -1,5 +1,5 @@
 use crate::Log::*;
-use egui::{emath::RectTransform, Color32, Pos2, Vec2};
+use egui::{emath::RectTransform, Color32, Pos2, Vec2,Rect,Sense};
 
 pub struct DisplayGraph {
     edges: Vec<(usize, usize, Option<char>)>,
@@ -56,8 +56,7 @@ impl DisplayGraph {
                 for (index, node) in nodes_level.iter().enumerate() {
                     self.nodes_pos[*node] = Pos2 {
                         x: (index as f32 + 1.) * (mx / (width as f32 + 1.)),
-                        y: (c_depth as f32) * (params.node_size + params.padding_y)
-                            + params.padding_y,
+                        y: (c_depth as f32) * (params.node_size + params.padding_y ),
                     };
                 }
             }
@@ -65,16 +64,16 @@ impl DisplayGraph {
         }
         Vec2 {
             x: width as f32 * (params.node_size + params.padding_x) + params.padding_x,
-            y: depth as f32 * (params.node_size + params.padding_y) + params.padding_y,
+            y: depth as f32 * (params.node_size + params.padding_y) ,
         }
     }
 
     pub fn draw(
-        &self,
+        &mut self,
         painter: &egui::Painter,
         to_screen: RectTransform,
         ui: &egui::Ui,
-        _response: &mut egui::Response,
+        response: &mut egui::Response,
     ) {
         //display edges
         for (from, to, label) in &self.edges {
@@ -107,10 +106,17 @@ impl DisplayGraph {
 
         for (index, node) in self.nodes.iter().enumerate() {
             let pos = to_screen.transform_pos(self.nodes_pos[index]);
+            let size = self.last_parameter.node_size/2.;
+            let point_rect = Rect::from_center_size(pos, Vec2{x:size,y:size});
+            let point_id = response.id.with(index);
+            let point_response = ui.interact(point_rect, point_id, Sense::drag());
+            self.nodes_pos[index] += point_response.drag_delta();
+            self.nodes_pos[index] = to_screen.from().clamp(self.nodes_pos[index]);
+            let pos = to_screen.transform_pos(self.nodes_pos[index]);
 
             painter.circle_filled(
                 pos,
-                self.last_parameter.node_size / 2.0,
+                size,
                 egui::Color32::WHITE,
             );
             painter.text(

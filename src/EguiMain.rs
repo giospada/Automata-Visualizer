@@ -92,7 +92,7 @@ impl eframe::App for EguiApp {
                             node_size: visualizer.size_node,
                         });
                         let (mut response, painter) =
-                            ui.allocate_painter(scren_size, egui::Sense::drag());
+                            ui.allocate_painter(scren_size, egui::Sense::hover());
 
                         let to_screen = emath::RectTransform::from_to(
                             Rect::from_min_size(Pos2::ZERO, response.rect.size()),
