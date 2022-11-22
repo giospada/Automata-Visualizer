@@ -1,7 +1,0 @@
-
-struct AutomaVisualizer{
-     
-}
-
-impl AutomaVisualizer{
-}

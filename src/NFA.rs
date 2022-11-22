@@ -1,12 +1,48 @@
-use crate::RegularExpression as RE;
+use crate::{RegularExpression as RE, DisplayGraph::ToDisplayGraph};
 use std::collections::BTreeMap;
-
+use crate::DisplayGraph::*;
 #[derive(Debug)]
-struct NFA {
+pub struct NFA {
     num_states: usize,
     start_state: usize,
     end_states: Vec<usize>,
     transitions: Vec<BTreeMap<char, Vec<usize>>>,
+}
+
+impl ToDisplayGraph for NFA{
+    fn to_display_graph(&self) -> DisplayGraph {
+        let mut done=vec![false;self.num_states];
+        let mut child =vec![];
+        let mut graph=vec![];
+        let mut labels=vec![];
+        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
+        graph.push(vec![0 as usize]);        
+        child.push(0);
+        done[0]=true;
+        while !child.is_empty() {
+            let mut current_nodes=vec![];
+            let mut newchild =vec![];    
+            
+            for index in child{
+                current_nodes.push(index);
+                labels.push(index.to_string());
+
+                for i in self.transitions[index].keys(){
+                    for j in &self.transitions[index][i]{
+                        edge.push((index,*j,Some(*i)));
+                        if !done[*j] {
+                            done[*j]=true;
+                            newchild.push(*j);
+                        }
+                    }
+                }
+
+            }
+            graph.push(current_nodes);
+            child=newchild;
+        }
+        DisplayGraph::new(edge,labels,graph)
+    }
 }
 
 impl NFA {

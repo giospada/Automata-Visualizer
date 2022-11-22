@@ -2,9 +2,9 @@
 #[macro_use]
 mod Log;
 mod EguiMain;
-mod SyntaxTree;
 mod RegularExpression;
-mod RegexVisualizer;
+mod Visualizer;
+mod DisplayGraph;
 mod Error;
 mod NFA;
 use EguiMain::EguiApp;

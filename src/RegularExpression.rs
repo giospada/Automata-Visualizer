@@ -1,9 +1,11 @@
-use crate::SyntaxTree::*;
 use crate::Error::*;
-use crate::Log::log;
 use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
+use crate::DisplayGraph::*;
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug)]
 pub enum ReOperator {
@@ -43,28 +45,7 @@ impl ReOperator {
 
         Ok(*res)
     }
-}
-
-
-impl ToSingleTree for ReOperator {
-    fn to_syntax_tree(&self) -> SyntaxTree {
-        let mut syntax = SyntaxTree::from_label(self.label());
-        match self {
-            ReOperator::Char(_ch) => {}
-            ReOperator::Concat(left, right) => {
-                syntax.children.push(left.to_syntax_tree());
-                syntax.children.push(right.to_syntax_tree());
-            }
-            ReOperator::Or(left, right) => {
-                syntax.children.push(left.to_syntax_tree());
-                syntax.children.push(right.to_syntax_tree());
-            }
-            ReOperator::KleeneStar(op) => {
-                syntax.children.push(op.to_syntax_tree());
-            }
-        }
-        syntax
-    }
+    
     fn label(&self) -> String {
         match self {
             ReOperator::Char(c) => c.to_string(),
@@ -73,6 +54,47 @@ impl ToSingleTree for ReOperator {
             ReOperator::KleeneStar(_) => "*".to_string(),
         }
     }
+    fn childs(&self)->Vec<&Self>{
+        match self{
+            ReOperator::Char(_) => Vec::new(),
+            ReOperator::Concat(b1,b2) => vec![b1,b2],
+            ReOperator::Or(b1,b2) => vec![b1,b2],
+            ReOperator::KleeneStar(b) => vec![b]
+        }
+    }
+}
+
+impl ToDisplayGraph for ReOperator{
+    // fa una bfs 
+     fn to_display_graph(&self) -> DisplayGraph{
+        let mut child =vec![];
+        let mut graph=vec![];
+        let mut labels=vec![];
+        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
+        let mut number_nodes=1 as usize;
+        graph.push(vec![0 as usize]);        
+        child.push((0,self));
+        while !child.is_empty() {
+            let mut current_nodes=vec![];
+            let mut newchild =vec![];    
+            
+            for (index,node) in child{
+                current_nodes.push(index);
+                labels.push(node.label());
+                
+                for child in node.childs(){
+                    edge.push((index,number_nodes,None));
+                    newchild.push((number_nodes,child));
+                    number_nodes+=1;
+                }
+
+            }
+            graph.push(current_nodes);
+            child=newchild;
+        }
+        DisplayGraph::new(edge,labels,graph)
+    }
+    
 }
 
 /// parse until closing parens or end of string
@@ -240,153 +262,4 @@ fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>>
 
 fn is_valid_char(c: char) -> bool {
     c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    mod next_token {
-        use super::*;
-        #[test]
-        fn only_char() {
-            let mut chars = "aaaa".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
-            assert_eq!(token, "aaaa");
-        }
-    
-        #[test]
-        fn with_star_and_or() {
-            let mut chars = "aa|b*".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
-            assert_eq!(token, "aa");
-        }
-    
-        #[test]
-        fn with_parenthesis() {
-            let mut chars = "aaa(a|b*)".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
-            assert_eq!(token, "aaa");
-        }
-    
-        #[test]
-        fn begin_parens() {
-            let mut chars = "(a|b*)".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
-            assert_eq!(token, "");
-        }
-    }
-
-    mod token_parse {
-        use super::*;
-
-        #[test]
-        fn only_char() {
-            let token = "aaaa".to_string();
-            let tree = parse_token(token).unwrap();
-
-            // this should be
-            // a 
-            // |  a
-            // c / 
-            // |  a
-            // c /
-            // |  a
-            // c /
-            // |
-            // start
-
-            assert_eq!(*tree, 
-                ReOperator::Concat(
-                Box::new(ReOperator::Concat(
-                    Box::new(ReOperator::Concat(
-                        Box::new(ReOperator::Char('a')),
-                        Box::new(ReOperator::Char('a')),
-                    )),
-                    Box::new(ReOperator::Char('a')),
-                )),
-                Box::new(ReOperator::Char('a')),
-            ));
-        }
-
-        #[test]
-        fn kleene_star() {
-            let token = "da*b".to_string();
-            let tree = parse_token(token).unwrap();
-
-            // this should be
-            // d  a
-            // |  |
-            // |  k
-            // c /
-            // |  b
-            // c /
-            // |
-            // start
-            // debug print tree
-            assert_eq!(*tree, 
-                ReOperator::Concat(
-                Box::new(ReOperator::Concat(
-                    Box::new(ReOperator::Char('d')),
-                    Box::new(ReOperator::KleeneStar(
-                        Box::new(ReOperator::Char('a')),
-                    )),
-                )),
-                Box::new(ReOperator::Char('b')),
-            ));
-        }
-
-        #[test]
-        fn error_double_star() {
-            let token = "ab**c".to_string();
-            let tree = parse_token(token);
-            assert!(tree.is_err());
-        }
-    }
-
-    mod parse_all {
-        use super::*;
-
-        #[test]
-        fn parse_and_parentesis() {
-            let str = "a(b|c)".to_string();
-            let tree = ReOperator::from_string(&str).unwrap();
-
-            let answer = ReOperator::Concat(
-                Box::new(ReOperator::Char('a')),
-                Box::new(ReOperator::Or(
-                    Box::new(ReOperator::Char('b')),
-                    Box::new(ReOperator::Char('c')),
-                )),
-            );
-
-            assert_eq!(tree, answer);
-        }
-
-        #[test]
-        fn parens_at_end_should_err() {
-            let str = "a(b|c".to_string();
-            let tree = ReOperator::from_string(&str);
-            assert!(tree.is_err());
-
-            let str = "a(b|c))".to_string();
-            let tree = ReOperator::from_string(&str);
-            assert!(tree.is_err());
-        }
-
-        #[test]
-        fn empty_brakets() {
-            let str = "a()".to_string();
-            let tree = ReOperator::from_string(&str);
-            assert!(tree.is_err());
-        }
-
-        #[test]
-        fn brakets_with_star() {
-            let str = "(a|b)*".to_string();
-            let tree = ReOperator::from_string(&str);
-            log!("{:?}", tree);
-            assert!(!tree.is_err());
-        }
-    }
 }
