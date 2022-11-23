@@ -98,11 +98,12 @@ impl eframe::App for EguiApp {
                             Rect::from_min_size(Pos2::ZERO, response.rect.size()),
                             response.rect,
                         );
-
-                        tree.draw(&painter, to_screen, &ui, &mut response);
+                        tree.drag_nodes(to_screen, ui, &mut response);
+                        tree.draw(&painter, to_screen, &ui);
                     }
                 })
             });
+            
         }
     }
 }
