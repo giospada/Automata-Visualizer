@@ -22,7 +22,6 @@ impl ToDisplayGraph for NFA{
         while !child.is_empty() {
             let mut current_nodes=vec![];
             let mut newchild =vec![];    
-            
             for index in child{
                 current_nodes.push(index);
                 labels.push(index.to_string());
@@ -40,6 +39,10 @@ impl ToDisplayGraph for NFA{
             }
             graph.push(current_nodes);
             child=newchild;
+        }
+        labels[self.start_state] = format!("s:{}",labels[self.start_state]);
+        for end_state in &self.end_states {
+            labels[*end_state] = format!("e:{}",labels[*end_state]);
         }
         DisplayGraph::new(edge,labels,graph)
     }

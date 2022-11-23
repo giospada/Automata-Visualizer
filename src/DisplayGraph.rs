@@ -49,6 +49,21 @@ impl DisplayGraph {
         }
     }
 
+    fn calculate_each_node_position(&mut self,bfs_max_width:f32){
+        let params=self.last_parameter;
+        let width_painting_area =
+            bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
+        for (current_bfs_depth, nodes_level) in self.nodes_bfs.iter().enumerate() {
+            for (index, node) in nodes_level.iter().enumerate() {
+                self.nodes_pos[*node] = Pos2 {
+                    x: (index as f32 + 1.)
+                        * (width_painting_area / (nodes_level.len() as f32 + 1.)),
+                    y: (current_bfs_depth as f32) * (params.node_size + params.padding_y),
+                };
+            }
+        }
+    }
+
     pub fn position(&mut self, params: DisplayGraphParameter) -> Vec2 {
         let bfs_max_width = self
             .nodes_bfs
@@ -60,18 +75,8 @@ impl DisplayGraph {
         let bfs_depth = self.nodes_bfs.len();
         // check if the graph has to be re-positioned (only if the params change)
         if params != self.last_parameter {
-            let width_painting_area =
-                bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
-            for (current_bfs_depth, nodes_level) in self.nodes_bfs.iter().enumerate() {
-                for (index, node) in nodes_level.iter().enumerate() {
-                    self.nodes_pos[*node] = Pos2 {
-                        x: (index as f32 + 1.)
-                            * (width_painting_area / (nodes_level.len() as f32 + 1.)),
-                        y: (current_bfs_depth as f32) * (params.node_size + params.padding_y),
-                    };
-                }
-            }
             self.last_parameter = params;
+            self.calculate_each_node_position(bfs_max_width);
         }
         let width_painting_area =
             bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
@@ -100,19 +105,23 @@ impl DisplayGraph {
         }
     }
 
+    
+
+    fn  draw_arrow(painter: &Painter, origin: Pos2, vec: Vec2, stroke: Stroke) {
+        use egui::emath::*;
+        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
+        let tip_length = ARROW_TIP_LENGHT;
+        let tip = origin + vec;
+        let dir = vec.normalized();
+        painter.line_segment([origin, tip], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
+    }
+
+
     fn draw_edge(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
-        let draw_arrow = |painter: &Painter, origin: Pos2, vec: Vec2, stroke: Stroke| {
-            use egui::emath::*;
-            let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
-            let tip_length = ARROW_TIP_LENGHT;
-            let tip = origin + vec;
-            let dir = vec.normalized();
-            painter.line_segment([origin, tip], stroke);
-            painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
-            painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
-        };
-  
-        for (from, to, label) in &self.edges {
+
+        for (from, to, _) in &self.edges {
             let origin = to_screen.transform_pos(self.nodes_pos[*from]);
             let end = to_screen.transform_pos(self.nodes_pos[*to]);
             let vec = (end - origin.to_vec2()).to_vec2();
@@ -121,18 +130,19 @@ impl DisplayGraph {
                 y: self.last_parameter.node_size / 2.,
             };
             let direction = vec.normalized() * dist.to_vec2();
-            draw_arrow(
+            Self::draw_arrow(
                 painter,
                 origin+direction,
                 vec - direction*2.,
                 Stroke::new(ARROW_WIDTH, COLOR_EDGE),
             );
-
+        }
+        for (from, to, label) in &self.edges {
             if let Some(label) = label {
                 let pos = self.nodes_pos[*from];
                 let pos =
                     pos + (self.nodes_pos[*to] - self.nodes_pos[*from].to_vec2()).to_vec2() / 2.;
-                let pos = pos - vec.normalized() * 4.;
+                let pos = pos - pos.to_vec2().normalized() * 4.;
                 let pos = to_screen.transform_pos(pos);
                 painter.text(
                     pos,
@@ -140,7 +150,7 @@ impl DisplayGraph {
                     label.to_string(),
                     egui::TextStyle::Body.resolve(ui.style()),
                     COLOR_LABEL_EDGE,
-                );
+                    );
             }
         }
     }
@@ -153,21 +163,21 @@ impl DisplayGraph {
                 pos,
                 self.last_parameter.node_size / 2.,
                 COLOR_NODES,
-            );
+                );
             painter.text(
                 pos,
                 egui::Align2::CENTER_CENTER,
                 node.clone(),
                 egui::TextStyle::Body.resolve(ui.style()),
                 COLOR_LABEL_NODE,
-            );
+                );
         }
     }
 
     pub fn draw(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
-        self.draw_nodes(painter, to_screen, ui);
         self.draw_edge(painter, to_screen, ui);
-        
+        self.draw_nodes(painter, to_screen, ui);
+
     }
 }
 
