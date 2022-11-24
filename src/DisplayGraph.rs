@@ -137,12 +137,19 @@ impl DisplayGraph {
                 Stroke::new(ARROW_WIDTH, COLOR_EDGE),
             );
         }
+
         for (from, to, label) in &self.edges {
             if let Some(label) = label {
                 let pos = self.nodes_pos[*from];
+                let diff= (self.nodes_pos[*to] - self.nodes_pos[*from].to_vec2()).to_vec2();
                 let pos =
-                    pos + (self.nodes_pos[*to] - self.nodes_pos[*from].to_vec2()).to_vec2() / 2.;
-                let pos = pos - pos.to_vec2().normalized() * 4.;
+                    pos + diff / 2.;
+
+                let dir=diff.normalized();
+                let rot = egui::emath::Rot2::from_angle(std::f32::consts::TAU / 4.);
+                let padding_from_arrow:f32 = 5.; 
+                let pos = pos - dir*5.;
+                let pos = pos- padding_from_arrow*(rot*dir);
                 let pos = to_screen.transform_pos(pos);
                 painter.text(
                     pos,
