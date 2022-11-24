@@ -1,12 +1,48 @@
-use crate::RegularExpression as RE;
+use crate::{RegularExpression as RE, DisplayGraph::ToDisplayGraph};
 use std::collections::BTreeMap;
-
-#[derive(Debug, Clone)]
-struct NFA {
+use crate::DisplayGraph::*;
+#[derive(Debug)]
+pub struct NFA {
     num_states: usize,
     start_state: usize,
     end_states: Vec<usize>,
     transitions: Vec<BTreeMap<char, Vec<usize>>>,
+}
+
+impl ToDisplayGraph for NFA{
+    fn to_display_graph(&self) -> DisplayGraph {
+        let mut done=vec![false;self.num_states];
+        let mut child =vec![];
+        let mut graph=vec![];
+        let mut labels=vec![];
+        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
+        graph.push(vec![0 as usize]);        
+        child.push(0);
+        done[0]=true;
+        while !child.is_empty() {
+            let mut current_nodes=vec![];
+            let mut newchild =vec![];    
+            
+            for index in child{
+                current_nodes.push(index);
+                labels.push(index.to_string());
+
+                for i in self.transitions[index].keys(){
+                    for j in &self.transitions[index][i]{
+                        edge.push((index,*j,Some(*i)));
+                        if !done[*j] {
+                            done[*j]=true;
+                            newchild.push(*j);
+                        }
+                    }
+                }
+
+            }
+            graph.push(current_nodes);
+            child=newchild;
+        }
+        DisplayGraph::new(edge,labels,graph)
+    }
 }
 
 impl NFA {
@@ -21,35 +57,39 @@ impl NFA {
 
     pub fn from_regex(regex: &RE::ReOperator) -> Self {
         let mut nfa = Self::new();
-        let (start, end) = nfa.recursive_from_regex(regex);
+        let (start, end) = nfa.recursive_from_regex(regex,None);
         nfa.start_state = start;
         nfa.end_states.push(end);
         nfa
     }
 
-    fn recursive_from_regex(&mut self, regex: &RE::ReOperator) -> (usize, usize) {
+    fn recursive_from_regex(&mut self, regex: &RE::ReOperator,first_option:Option<usize>) -> (usize, usize) {
         let add_state = |nfa: &mut NFA| {
             nfa.num_states += 1;
             nfa.transitions.push(BTreeMap::new());
             nfa.num_states - 1
         };  
         let add_start_end = |nfa: &mut NFA| {
-            (add_state(nfa), add_state(nfa))
+            
+            (
+                if let Some(start)=first_option {start}else { add_state(nfa) },
+                add_state(nfa)
+            )
         };
 
         let (start,end) = match regex{
             RE::ReOperator::Concat(left, right) => {
-                let (l_start,l_end) = self.recursive_from_regex(left);
-                let (r_start,r_end) = self.recursive_from_regex(right);
-                self.transitions[l_end].entry('ε').or_insert(Vec::new()).push(r_start);
+                let (l_start,l_end) = self.recursive_from_regex(left,None);
+                let (_r_start,r_end) = self.recursive_from_regex(right,Some(l_end));
 
+                //self.transitions[l_end].entry('ε').or_insert(Vec::new()).push(r_start);
                 (l_start,r_end)
             },
             RE::ReOperator::Or(left, right) => {
                 let (start,end) =add_start_end(self);
 
-                let (l_start,l_end) = self.recursive_from_regex(left);
-                let (r_start,r_end) = self.recursive_from_regex(right);
+                let (l_start,l_end) = self.recursive_from_regex(left,None);
+                let (r_start,r_end) = self.recursive_from_regex(right,None);
 
                 self.transitions[start].entry('ε').or_insert(Vec::new()).push(l_start);
                 self.transitions[start].entry('ε').or_insert(Vec::new()).push(r_start);
@@ -60,7 +100,7 @@ impl NFA {
             },
             RE::ReOperator::KleeneStar(inner) => {
                 let (start,end) =add_start_end(self);
-                let (i_start,i_end) = self.recursive_from_regex(inner);
+                let (i_start,i_end) = self.recursive_from_regex(inner,None);
 
                 self.transitions[start].entry('ε').or_insert(Vec::new()).push(end);
                 self.transitions[i_end].entry('ε').or_insert(Vec::new()).push(i_start);
