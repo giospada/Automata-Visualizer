@@ -8,6 +8,7 @@ pub struct Visualizer {
     pub padding_y: f32,
     pub padding_x: f32,
     pub open: bool,
+    // we can add a lot of paramters such color of nodes, etc..
 }
 
 impl Visualizer {

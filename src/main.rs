@@ -23,7 +23,8 @@ fn main() {
 // when compiling to web using trunk.
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    let web_options = eframe::WebOptions::default();
+    let mut web_options = eframe::WebOptions::default();
+    web_options.default_theme = eframe::Theme::Dark;
     eframe::start_web(
         "the_canvas_id", // hardcode it
         web_options,
