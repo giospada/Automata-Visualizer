@@ -1,0 +1,31 @@
+name: Build and Deploy
+on: 
+  push: 
+    branches: 
+      - 'main'
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Install latest stable rust
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+
+      - name: Install 🔧 # This example project is built using npm and outputs the result to the 'build' folder. Replace with the commands required to build your project, or remove this step entirely if your site is pre-built.
+        run: | 
+          sudo apt update
+          sudo apt install librust-freetype-sys-dev librust-servo-fontconfig-sys-dev
+          rustup target add wasm32-unknown-unknown
+          cargo install trunk --locked
+
+      - name: Build
+        run: trunk build
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist # The folder the action should deploy.
