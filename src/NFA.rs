@@ -1,12 +1,17 @@
 use crate::{RegularExpression as RE, DisplayGraph::ToDisplayGraph};
 use std::collections::{BTreeMap, BTreeSet};
 use crate::DisplayGraph::*;
+
 #[derive(Debug)]
 pub struct NFA {
     start_state: usize,
     num_states: usize,
     end_states: Vec<usize>,
     transitions: Vec<BTreeMap<char, Vec<usize>>>,
+
+    // subset of the alphabet that is used in the regular expression
+    // used to reduce the number of transitions in the DFA conversion
+    used_alphabet: BTreeSet<char>,
 }
 
 impl ToDisplayGraph for NFA{
@@ -38,7 +43,7 @@ impl ToDisplayGraph for NFA{
 
             }
             graph.push(current_nodes);
-            child=newchild;
+            child = newchild;
         }
         labels[self.start_state] = format!("s:{}",labels[self.start_state]);
         for end_state in &self.end_states {
@@ -55,6 +60,7 @@ impl NFA {
             start_state: 0,
             end_states: Vec::new(),
             transitions: Vec::new(),
+            used_alphabet: BTreeSet::new(),
         }
     }
 
@@ -66,8 +72,8 @@ impl NFA {
         &self.transitions
     }
 
-    pub fn get_alphabet() -> &'static str {
-        RE::ALPHABET
+    pub fn get_alphabet(&self) -> Vec<char> {
+        self.used_alphabet.iter().cloned().collect()
     }
 
     pub fn from_regex(regex: &RE::ReOperator) -> Self {
@@ -78,37 +84,41 @@ impl NFA {
         nfa
     }
 
-    pub fn epsilon_closure(&self, states: &Vec<usize>) -> Vec<usize> {
-        let mut closure = states.clone();
-        let mut done = vec![false; self.num_states];
-        let mut child = vec![];
+    pub fn epsilon_closure(&self, states: &Vec<usize>) -> BTreeSet<usize> {
+        let mut closure = BTreeSet::new();
+        let mut visited = vec![false; self.num_states];
+        let mut states_to_visit = vec![];
 
         for state in states {
-            child.push(*state);
-            done[*state] = true;
+            closure.insert(*state);
+            states_to_visit.push(*state);
+            visited[*state] = true;
         }
 
-        while !child.is_empty() {
-            let mut newchild = vec![];
-            for index in child {
-                for i in self.transitions[index].keys() {
-                    if *i == 'ε' {
-                        for j in &self.transitions[index][i] {
-                            if !done[*j] {
-                                done[*j] = true;
-                                newchild.push(*j);
-                                closure.push(*j);
-                            }
-                        }
+        while !states_to_visit.is_empty() {
+            let mut new_states_to_visit = vec![];
+
+            for state in states_to_visit {
+                let epsilon_states = self.get_epsilon_transitions(state);
+
+                for epsilon_state in epsilon_states {
+                    if !visited[epsilon_state] {
+                        visited[epsilon_state] = true;
+                        new_states_to_visit.push(epsilon_state);
+                        closure.insert(epsilon_state);
                     }
                 }
             }
 
-            child = newchild;
+            states_to_visit = new_states_to_visit;
         }
+
         closure
     }
 
+    // This function will be used if you need to make computation animations
+    // with the NFA, after that, remember to delete this comment and the #[allow(dead_code)]
+    #[allow(dead_code)]
     pub fn make_move(&self, states: &Vec<usize>, c: char) -> BTreeSet<usize> {
         let mut new_states = BTreeSet::new();
         for state in states {
@@ -124,6 +134,19 @@ impl NFA {
         new_states
     }
 
+    fn get_epsilon_transitions(&self, state: usize) -> Vec<usize> {
+        let mut transitions = vec![];
+        for i in self.transitions[state].keys() {
+            if *i == 'ε' {
+                for j in &self.transitions[state][i] {
+                    transitions.push(*j);
+                }
+            }
+        }
+
+        transitions
+    }
+
     fn recursive_from_regex(&mut self, regex: &RE::ReOperator,first_option:Option<usize>) -> (usize, usize) {
         let add_state = |nfa: &mut NFA| {
             nfa.num_states += 1;
@@ -132,23 +155,21 @@ impl NFA {
         };  
 
         let add_start_end = |nfa: &mut NFA| {
-            
             (
-                if let Some(start)=first_option {start}else { add_state(nfa) },
+                if let Some(start) = first_option {start}else { add_state(nfa) },
                 add_state(nfa)
             )
         };
 
-        let (start, end) = match regex{
+        let (start, end) = match regex {
             RE::ReOperator::Concat(left, right) => {
                 let (l_start,l_end) = self.recursive_from_regex(left,None);
                 let (_r_start,r_end) = self.recursive_from_regex(right,Some(l_end));
 
-                //self.transitions[l_end].entry('ε').or_insert(Vec::new()).push(r_start);
                 (l_start,r_end)
             },
             RE::ReOperator::Or(left, right) => {
-                let (start, end) =add_start_end(self);
+                let (start, end) = add_start_end(self);
 
                 let (l_start,l_end) = self.recursive_from_regex(left,None);
                 let (r_start,r_end) = self.recursive_from_regex(right,None);
@@ -161,7 +182,7 @@ impl NFA {
                 (start, end)
             },
             RE::ReOperator::KleeneStar(inner) => {
-                let (start, end) =add_start_end(self);
+                let (start, end) = add_start_end(self);
                 let (i_start,i_end) = self.recursive_from_regex(inner,None);
 
                 self.transitions[start].entry('ε').or_insert(Vec::new()).push(end);
@@ -172,15 +193,14 @@ impl NFA {
                 (start, end)
             },
             RE::ReOperator::Char(c) => {
-                let (start, end) =add_start_end(self);
+                let (start, end) = add_start_end(self);
                 self.transitions[start].entry(*c).or_insert(Vec::new()).push(end);
+                
+                self.used_alphabet.insert(*c);
 
                 (start, end)
             },
         };
-        //nfa.transitions.push(BTreeMap::new());
-        //nfa.transitions.push(BTreeMap::new());
-        //nfa.transitions[nfa.start_state as usize].insert(regex.symbol, nfa.end_states[0]);
 
         (start, end)
     }
