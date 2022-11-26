@@ -1,6 +1,5 @@
 use crate::DisplayGraph::*;
 
-
 pub struct Visualizer {
     pub name: String,
     pub graph: Option<DisplayGraph>,
@@ -9,6 +8,10 @@ pub struct Visualizer {
     pub padding_x: f32,
     pub open: bool,
     // we can add a lot of paramters such color of nodes, etc..
+}
+
+pub trait VisualizerName {
+    fn get_name() -> String;
 }
 
 impl Visualizer {
@@ -32,10 +35,17 @@ impl Visualizer {
         }
     }
 
-    pub fn generate_graph(&mut self,graph: DisplayGraph) {
+    fn set_graph(&mut self, graph: DisplayGraph) {
         self.graph = Some(graph);
         self.open = true;
     }
 }
 
-
+impl<T: Into<DisplayGraph> + VisualizerName> From<T> for Visualizer {
+    fn from(graph: T) -> Self {
+        let mut vis = Visualizer::new(<T as VisualizerName>::get_name());
+        let graph: DisplayGraph = graph.into();
+        vis.set_graph(graph);
+        vis
+    }
+}

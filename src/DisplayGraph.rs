@@ -1,13 +1,11 @@
 use egui::{emath::RectTransform, Color32, Painter, Pos2, Rect, Sense, Stroke, Vec2};
 
-const ARROW_TIP_LENGHT:f32 = 10.;
-const ARROW_WIDTH:f32=3.;
-const COLOR_EDGE:Color32 = Color32::BLUE ;
-const COLOR_NODES:Color32 = Color32::WHITE;
-const COLOR_LABEL_EDGE:Color32 = Color32::GRAY;
-const COLOR_LABEL_NODE:Color32 = Color32::BLACK;
-
-
+const ARROW_TIP_LENGHT: f32 = 10.;
+const ARROW_WIDTH: f32 = 3.;
+const COLOR_EDGE: Color32 = Color32::BLUE ;
+const COLOR_NODES: Color32 = Color32::WHITE;
+const COLOR_LABEL_EDGE: Color32 = Color32::GRAY;
+const COLOR_LABEL_NODE: Color32 = Color32::BLACK;
 
 pub struct DisplayGraph {
     edges: Vec<(usize, usize, Option<String>)>,

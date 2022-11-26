@@ -3,6 +3,7 @@ use crate::DisplayGraph::{DisplayGraph};
 use crate::NFA::NFA;
 use crate::RegularExpression as RE;
 use crate::Log::log;
+use crate::Visualizer::VisualizerName;
 
 #[derive(Debug)]
 pub struct DFA {
@@ -78,6 +79,12 @@ impl From<&NFA> for DFA {
         }
 
         dfa
+    }
+}
+
+impl VisualizerName for DFA {
+    fn get_name() -> String {
+        "DFA".to_string()
     }
 }
 

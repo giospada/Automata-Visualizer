@@ -6,36 +6,51 @@ use crate::DFA::*;
 use eframe::egui;
 use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
 
-pub struct EguiApp {
-    re: Visualizer,
-    nfa: Visualizer,
-    dfa: Visualizer,
+pub struct EguiApp  {
     error: Option<String>,
     regex_text: String,
+
+    // This is indexed accordingly
+    // 0: Regex
+    // 1: NFA
+    // 2: DFA
+    to_visualize: [Visualizer; 3],
 }
 
 impl Default for EguiApp {
     fn default() -> Self {
         Self {
-            re: Visualizer::new("Regex Syntax Tree".to_string()),
-            nfa: Visualizer::new("NFA".to_string()),
-            dfa: Visualizer::new("DFA".to_string()),
             error: None,
             regex_text: String::new(),
+
+            to_visualize: [
+                Visualizer::new(ReOperator::get_name()), 
+                Visualizer::new(NFA::get_name()),
+                Visualizer::new(DFA::get_name()),
+            ],
         }
     }
 }
 
 impl EguiApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext) -> Self {
         Self::default()
+    }
+
+    pub fn get_converter(index: i32) -> impl Fn(ReOperator) -> Visualizer {
+        match index {
+            0 => |re| Visualizer::from(re),
+            1 => |re| Visualizer::from(NFA::from(&re)),
+            2 => |re| Visualizer::from(DFA::from(&NFA::from(&re))),
+            _ => panic!("Invalid index"),
+        }
     }
 }
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Main").show(ctx, |ui| {
-            for (index, visualizer) in [&mut self.re, &mut self.nfa, &mut self.dfa].into_iter().enumerate() {
+            for (index, visualizer) in self.to_visualize.iter_mut().enumerate() {
                 ui.heading(&visualizer.name);
                 if index == 0 {
                     ui.horizontal(|ui| {
@@ -47,20 +62,10 @@ impl eframe::App for EguiApp {
                 if ui.button(format!("Generate {}", visualizer.name)).clicked() {
                     match ReOperator::from_string(&self.regex_text) {
                         Ok(re) => {
-
-                            // TODO: questa parte è bruttissima, hardcodato il match per le istruzioni di creazione del visualizer
-                            // bisogna fare un mapper tipo: create_visualizer_from_regex(re) -> Visualizer
-
-                            let graph = if index == 0 {
-                                re.into()
-                            } else if index == 1 {
-                                NFA::from(&re).into()
-                            } else {
-                                DFA::from(&re).into()
-                            };
-                            visualizer.generate_graph(graph);
-                            self.error=None;
+                            *visualizer = Self::get_converter(index as i32)(re);
+                            self.error = None;
                         }
+                        
                         Err(e) => {
                             self.error = Some(e.to_string());
                         }
@@ -87,7 +92,7 @@ impl eframe::App for EguiApp {
             }
           
         });
-        for visualizer in [&mut self.nfa,&mut self.dfa, &mut self.re].into_iter() {
+        for visualizer in self.to_visualize.iter_mut() {
             visualizer.check_open();
             let syntaxTree = Window::new(format!("{}", visualizer.name));
             let syntaxTree = syntaxTree.open(&mut visualizer.open);

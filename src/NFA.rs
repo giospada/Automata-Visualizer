@@ -1,4 +1,4 @@
-use crate::RegularExpression as RE;
+use crate::{RegularExpression as RE, Visualizer::{VisualizerName}};
 use std::collections::{BTreeMap, BTreeSet};
 use crate::DisplayGraph::*;
 
@@ -156,6 +156,12 @@ impl NFA {
         };
 
         (start, end)
+    }
+}
+
+impl VisualizerName for NFA {
+    fn get_name() -> String {
+        "NFA".to_string()
     }
 }
 
