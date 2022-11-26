@@ -12,7 +12,7 @@ pub struct Visualizer {
 }
 
 impl Visualizer {
-    pub fn new(name:String) -> Self {
+    pub fn new(name: String) -> Self {
         Self {
             name: name,
             graph: None,
@@ -32,7 +32,7 @@ impl Visualizer {
         }
     }
 
-    pub fn generate_graph(&mut self,graph:DisplayGraph) {
+    pub fn generate_graph(&mut self,graph: DisplayGraph) {
         self.graph = Some(graph);
         self.open = true;
     }

@@ -52,12 +52,12 @@ impl eframe::App for EguiApp {
                             // bisogna fare un mapper tipo: create_visualizer_from_regex(re) -> Visualizer
 
                             let graph = if index == 0 {
-                                re.to_display_graph()
+                                re.into()
                             } else if index == 1 {
-                                NFA::from_regex(&re).to_display_graph()
+                                NFA::from_regex(&re).into()
                             } else {
                                 let nfa = NFA::from_regex(&re);
-                                DFA::from_nfa(&nfa).to_display_graph()
+                                DFA::from_nfa(&nfa).into()
                             };
                             visualizer.generate_graph(graph);
                             self.error=None;

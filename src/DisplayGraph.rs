@@ -53,6 +53,7 @@ impl DisplayGraph {
         let params=self.last_parameter;
         let width_painting_area =
             bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
+
         for (current_bfs_depth, nodes_level) in self.nodes_bfs.iter().enumerate() {
             for (index, node) in nodes_level.iter().enumerate() {
                 self.nodes_pos[*node] = Pos2 {
@@ -170,24 +171,19 @@ impl DisplayGraph {
                 pos,
                 self.last_parameter.node_size / 2.,
                 COLOR_NODES,
-                );
+            );
             painter.text(
                 pos,
                 egui::Align2::CENTER_CENTER,
                 node.clone(),
                 egui::TextStyle::Body.resolve(ui.style()),
                 COLOR_LABEL_NODE,
-                );
+            );
         }
     }
 
     pub fn draw(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
         self.draw_edge(painter, to_screen, ui);
         self.draw_nodes(painter, to_screen, ui);
-
     }
-}
-
-pub trait ToDisplayGraph {
-    fn to_display_graph(&self) -> DisplayGraph;
 }

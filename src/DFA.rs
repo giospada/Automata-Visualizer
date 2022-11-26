@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
-use crate::DisplayGraph::{DisplayGraph, ToDisplayGraph};
+use crate::DisplayGraph::{DisplayGraph};
 use crate::NFA::NFA;
 use crate::Log::log;
 
@@ -78,8 +78,8 @@ impl DFA {
     }
 }
 
-impl ToDisplayGraph for DFA{
-    fn to_display_graph(&self) -> DisplayGraph {
+impl Into<DisplayGraph> for DFA {
+    fn into(self) -> DisplayGraph {
         let mut visited = vec![false; self.num_states];
         let mut to_visit = vec![];
         let mut graph = vec![];

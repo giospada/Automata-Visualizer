@@ -1,4 +1,4 @@
-use crate::{RegularExpression as RE, DisplayGraph::ToDisplayGraph};
+use crate::RegularExpression as RE;
 use std::collections::{BTreeMap, BTreeSet};
 use crate::DisplayGraph::*;
 
@@ -14,8 +14,8 @@ pub struct NFA {
     used_alphabet: BTreeSet<char>,
 }
 
-impl ToDisplayGraph for NFA{
-    fn to_display_graph(&self) -> DisplayGraph {
+impl Into<DisplayGraph> for NFA {
+    fn into(self) -> DisplayGraph {
         let mut done=vec![false;self.num_states];
         let mut child =vec![];
         let mut graph=vec![];
