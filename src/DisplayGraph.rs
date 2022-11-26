@@ -10,7 +10,7 @@ const COLOR_LABEL_NODE:Color32 = Color32::BLACK;
 
 
 pub struct DisplayGraph {
-    edges: Vec<(usize, usize, Option<char>)>,
+    edges: Vec<(usize, usize, Option<String>)>,
     nodes: Vec<String>,
     nodes_pos: Vec<Pos2>,
     nodes_bfs: Vec<Vec<usize>>,
@@ -36,7 +36,7 @@ impl DisplayGraphParameter {
 
 impl DisplayGraph {
     pub fn new(
-        edges: Vec<(usize, usize, Option<char>)>,
+        edges: Vec<(usize, usize, Option<String>)>,
         nodes: Vec<String>,
         nodes_bfs: Vec<Vec<usize>>,
     ) -> Self {

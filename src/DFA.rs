@@ -94,19 +94,19 @@ impl ToDisplayGraph for DFA{
         let mut child =vec![];
         let mut graph=vec![];
         let mut labels=vec![];
-        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
-        graph.push(vec![0 as usize]);        
-        child.push(0);
-        done[0]=true;
+        graph.push(vec![self.start_state as usize]);        
+        child.push(self.start_state);
+        done[self.start_state]=true;
         while !child.is_empty() {
             let mut current_nodes=vec![];
             let mut newchild =vec![];    
             for index in child{
                 current_nodes.push(index);
+                
                 labels.push(index.to_string());
 
                 for i in self.transitions[index].keys(){
-                    edge.push((index,self.transitions[index][i],Some(*i)));
+                    //edge.push((index,self.transitions[index][i],Some(format!("{}",*i))));
                     if !done[self.transitions[index][i]] {
                         done[self.transitions[index][i]]=true;
                         newchild.push(self.transitions[index][i]);
@@ -116,6 +116,20 @@ impl ToDisplayGraph for DFA{
             }
             graph.push(current_nodes);
             child=newchild;
+        }
+        // edge 
+        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
+
+        for (from,edgemap) in self.transitions.iter().enumerate() {
+            let mut collect_edge:BTreeMap<usize,String> = BTreeMap::new();
+            for (label,to) in self.transitions[from].iter() {
+                collect_edge.entry(*to)
+                    .and_modify(|x|*x=format!("{},{}",*x,label))
+                    .or_insert(format!("{}",*label));
+            }
+            for (to,label) in collect_edge.iter(){
+                edge.push((from,*to,Some(label.clone())))
+            }
         }
         labels[self.start_state] = format!("s:{}",labels[self.start_state]);
         for end_state in &self.end_states {

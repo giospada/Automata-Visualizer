@@ -88,7 +88,7 @@ impl eframe::App for EguiApp {
             }
           
         });
-        for visualizer in [&mut self.nfa, &mut self.re].into_iter() {
+        for visualizer in [&mut self.nfa,&mut self.dfa, &mut self.re].into_iter() {
             visualizer.check_open();
             let syntaxTree = Window::new(format!("{}", visualizer.name));
             let syntaxTree = syntaxTree.open(&mut visualizer.open);

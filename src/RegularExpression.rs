@@ -72,7 +72,7 @@ impl ToDisplayGraph for ReOperator{
         let mut child =vec![];
         let mut graph=vec![];
         let mut labels=vec![];
-        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
+        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
         let mut number_nodes=1 as usize;
         graph.push(vec![0 as usize]);        
         child.push((0,self));

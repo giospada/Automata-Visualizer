@@ -15,10 +15,10 @@ impl ToDisplayGraph for NFA{
         let mut child =vec![];
         let mut graph=vec![];
         let mut labels=vec![];
-        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
-        graph.push(vec![0 as usize]);        
-        child.push(0);
-        done[0]=true;
+        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
+        graph.push(vec![self.start_state as usize]);        
+        child.push(self.start_state);
+        done[self.start_state]=true;
         while !child.is_empty() {
             let mut current_nodes=vec![];
             let mut newchild =vec![];    
@@ -28,7 +28,7 @@ impl ToDisplayGraph for NFA{
 
                 for i in self.transitions[index].keys(){
                     for j in &self.transitions[index][i]{
-                        edge.push((index,*j,Some(*i)));
+                        edge.push((index,*j,Some(format!("{}",*i))));
                         if !done[*j] {
                             done[*j]=true;
                             newchild.push(*j);
