@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use crate::DisplayGraph::{DisplayGraph};
 use crate::NFA::NFA;
+use crate::RegularExpression as RE;
 use crate::Log::log;
 
 #[derive(Debug)]
@@ -25,7 +26,23 @@ impl DFA {
         }
     }
 
-    pub fn from_nfa(nfa: &NFA) -> Self {
+    fn add_state(dfa: &mut DFA, states: BTreeSet<usize>) -> usize {
+        dfa.transitions.push(BTreeMap::new());
+            
+        if let Some(map) = &mut dfa.idx_to_nfa_states {
+            map.insert(dfa.num_states, states.clone());
+        } else {
+            dfa.idx_to_nfa_states = Some(BTreeMap::new());
+            dfa.idx_to_nfa_states.as_mut().unwrap().insert(dfa.num_states, states.clone());
+        }
+        
+        dfa.num_states += 1; 
+        dfa.num_states - 1
+    }
+}
+
+impl From<&NFA> for DFA {
+    fn from(nfa: &NFA) -> Self {
         let mut dfa = DFA::new();
         let mut map_to_used = BTreeMap::new();
 
@@ -62,19 +79,12 @@ impl DFA {
 
         dfa
     }
+}
 
-    fn add_state(dfa: &mut DFA, states: BTreeSet<usize>) -> usize {
-        dfa.transitions.push(BTreeMap::new());
-            
-        if let Some(map) = &mut dfa.idx_to_nfa_states {
-            map.insert(dfa.num_states, states.clone());
-        } else {
-            dfa.idx_to_nfa_states = Some(BTreeMap::new());
-            dfa.idx_to_nfa_states.as_mut().unwrap().insert(dfa.num_states, states.clone());
-        }
-        
-        dfa.num_states += 1; 
-        dfa.num_states - 1
+impl From<&RE::ReOperator> for DFA {
+    fn from(regex: &RE::ReOperator) -> Self {
+        let nfa = NFA::from(regex);
+        DFA::from(&nfa)
     }
 }
 

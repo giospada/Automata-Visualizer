@@ -14,45 +14,6 @@ pub struct NFA {
     used_alphabet: BTreeSet<char>,
 }
 
-impl Into<DisplayGraph> for NFA {
-    fn into(self) -> DisplayGraph {
-        let mut done=vec![false;self.num_states];
-        let mut child =vec![];
-        let mut graph=vec![];
-        let mut labels=vec![];
-        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
-        graph.push(vec![self.start_state as usize]);        
-        child.push(self.start_state);
-        done[self.start_state]=true;
-        while !child.is_empty() {
-            let mut current_nodes=vec![];
-            let mut newchild =vec![];    
-            for index in child{
-                current_nodes.push(index);
-                labels.push(index.to_string());
-
-                for i in self.transitions[index].keys(){
-                    for j in &self.transitions[index][i]{
-                        edge.push((index,*j,Some(format!("{}",*i))));
-                        if !done[*j] {
-                            done[*j]=true;
-                            newchild.push(*j);
-                        }
-                    }
-                }
-
-            }
-            graph.push(current_nodes);
-            child = newchild;
-        }
-        labels[self.start_state] = format!("s:{}",labels[self.start_state]);
-        for end_state in &self.end_states {
-            labels[*end_state] = format!("e:{}",labels[*end_state]);
-        }
-        DisplayGraph::new(edge,labels,graph)
-    }
-}
-
 impl NFA {
     fn new() -> Self {
         Self {
@@ -74,14 +35,6 @@ impl NFA {
 
     pub fn get_alphabet(&self) -> Vec<char> {
         self.used_alphabet.iter().cloned().collect()
-    }
-
-    pub fn from_regex(regex: &RE::ReOperator) -> Self {
-        let mut nfa = Self::new();
-        let (start, end) = nfa.recursive_from_regex(regex,None);
-        nfa.start_state = start;
-        nfa.end_states.push(end);
-        nfa
     }
 
     pub fn epsilon_closure(&self, states: &Vec<usize>) -> BTreeSet<usize> {
@@ -203,6 +156,55 @@ impl NFA {
         };
 
         (start, end)
+    }
+}
+
+impl From<&RE::ReOperator> for NFA {
+    fn from(regex: &RE::ReOperator) -> Self {
+        let mut nfa = Self::new();
+        let (start, end) = nfa.recursive_from_regex(regex,None);
+        nfa.start_state = start;
+        nfa.end_states.push(end);
+        nfa
+    }
+}
+
+impl Into<DisplayGraph> for NFA {
+    fn into(self) -> DisplayGraph {
+        let mut done=vec![false;self.num_states];
+        let mut child =vec![];
+        let mut graph=vec![];
+        let mut labels=vec![];
+        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
+        graph.push(vec![self.start_state as usize]);        
+        child.push(self.start_state);
+        done[self.start_state]=true;
+        while !child.is_empty() {
+            let mut current_nodes=vec![];
+            let mut newchild =vec![];    
+            for index in child{
+                current_nodes.push(index);
+                labels.push(index.to_string());
+
+                for i in self.transitions[index].keys(){
+                    for j in &self.transitions[index][i]{
+                        edge.push((index,*j,Some(format!("{}",*i))));
+                        if !done[*j] {
+                            done[*j]=true;
+                            newchild.push(*j);
+                        }
+                    }
+                }
+
+            }
+            graph.push(current_nodes);
+            child = newchild;
+        }
+        labels[self.start_state] = format!("s:{}",labels[self.start_state]);
+        for end_state in &self.end_states {
+            labels[*end_state] = format!("e:{}",labels[*end_state]);
+        }
+        DisplayGraph::new(edge,labels,graph)
     }
 }
 

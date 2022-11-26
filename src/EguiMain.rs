@@ -54,10 +54,9 @@ impl eframe::App for EguiApp {
                             let graph = if index == 0 {
                                 re.into()
                             } else if index == 1 {
-                                NFA::from_regex(&re).into()
+                                NFA::from(&re).into()
                             } else {
-                                let nfa = NFA::from_regex(&re);
-                                DFA::from_nfa(&nfa).into()
+                                DFA::from(&re).into()
                             };
                             visualizer.generate_graph(graph);
                             self.error=None;
