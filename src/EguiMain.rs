@@ -2,12 +2,14 @@ use crate::DisplayGraph::*;
 use crate::Visualizer::*;
 use crate::RegularExpression::*;
 use crate::NFA::*;
+use crate::DFA::*;
 use eframe::egui;
 use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
 
 pub struct EguiApp {
     re: Visualizer,
     nfa: Visualizer,
+    dfa: Visualizer,
     error: Option<String>,
     regex_text: String,
 }
@@ -17,6 +19,7 @@ impl Default for EguiApp {
         Self {
             re: Visualizer::new("Regex Syntax Tree".to_string()),
             nfa: Visualizer::new("NFA".to_string()),
+            dfa: Visualizer::new("DFA".to_string()),
             error: None,
             regex_text: String::new(),
         }
@@ -32,7 +35,7 @@ impl EguiApp {
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Main").show(ctx, |ui| {
-            for (index, visualizer) in [&mut self.nfa, &mut self.re].into_iter().enumerate() {
+            for (index, visualizer) in [&mut self.re, &mut self.nfa, &mut self.dfa].into_iter().enumerate() {
                 ui.heading(&visualizer.name);
                 if index == 0 {
                     ui.horizontal(|ui| {
@@ -44,10 +47,17 @@ impl eframe::App for EguiApp {
                 if ui.button(format!("Generate {}", visualizer.name)).clicked() {
                     match ReOperator::from_string(&self.regex_text) {
                         Ok(re) => {
-                            let graph = if index == 1 {
+
+                            // TODO: questa parte è bruttissima, hardcodato il match per le istruzioni di creazione del visualizer
+                            // bisogna fare un mapper tipo: create_visualizer_from_regex(re) -> Visualizer
+
+                            let graph = if index == 0 {
                                 re.to_display_graph()
-                            } else {
+                            } else if index == 1 {
                                 NFA::from_regex(&re).to_display_graph()
+                            } else {
+                                let nfa = NFA::from_regex(&re);
+                                DFA::from_nfa(&nfa).to_display_graph()
                             };
                             visualizer.generate_graph(graph);
                             self.error=None;

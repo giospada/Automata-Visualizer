@@ -87,6 +87,7 @@ impl DFA {
 }
 
 
+// TODO: FIXME:, i was written by copilot, and i'm dumb
 impl ToDisplayGraph for DFA{
     fn to_display_graph(&self) -> DisplayGraph {
         let mut done=vec![false;self.num_states];
