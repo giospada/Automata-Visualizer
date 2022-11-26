@@ -15,7 +15,7 @@ pub struct EguiApp {
 impl Default for EguiApp {
     fn default() -> Self {
         Self {
-            re: Visualizer::new("Regular Expression".to_string()),
+            re: Visualizer::new("Regex Syntax Tree".to_string()),
             nfa: Visualizer::new("NFA".to_string()),
             error: None,
             regex_text: String::new(),
@@ -45,9 +45,9 @@ impl eframe::App for EguiApp {
                     match ReOperator::from_string(&self.regex_text) {
                         Ok(re) => {
                             let graph = if index == 1 {
-                                NFA::from_regex(&re).to_display_graph()
-                            } else {
                                 re.to_display_graph()
+                            } else {
+                                NFA::from_regex(&re).to_display_graph()
                             };
                             visualizer.generate_graph(graph);
                             self.error=None;
