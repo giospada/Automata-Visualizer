@@ -15,6 +15,8 @@ pub enum ReOperator {
     KleeneStar(Box<ReOperator>),
 }
 
+pub const ALPHABET: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
 impl PartialEq for ReOperator {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
