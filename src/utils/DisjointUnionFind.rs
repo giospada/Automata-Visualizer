@@ -1,5 +1,6 @@
 /// Disjoint union find with rank heuristic and path compression.
 /// Uses negative values to count and store the rank.
+#[derive(Debug)]
 pub struct DisjointUnionFind {
     parent: Vec<i32>,
     num_sets: usize,

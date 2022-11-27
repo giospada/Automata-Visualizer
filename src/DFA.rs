@@ -18,7 +18,7 @@ pub struct DFA {
     idx_to_nfa_states: Option<BTreeMap<usize, BTreeSet<usize>>>,
 }
 
-const INVALID_STATE: usize = std::usize::MAX;
+const INVALID_STATE: i32 = -1;
 
 impl DFA {
     fn new() -> Self {
@@ -36,10 +36,12 @@ impl DFA {
         let equivalent_states = self.get_equivalent_states();
         let mut unequal_sets = DisjointUnionFind::new(self.num_states);
 
+        // join all equivalent states
         for (first, second) in equivalent_states {
             unequal_sets.join(first, second);
         }
 
+        // create mapping from old index, to new index
         let mut head_to_idx = BTreeMap::new();
         let mut curr_idx = 0;
         for i in 0..self.num_states {
@@ -49,25 +51,26 @@ impl DFA {
             }
         }
         
+        // create new transitions mapper
         let num_states = unequal_sets.get_size();
         let mut new_transitions = vec![BTreeMap::new(); num_states];
-        
         for (head, idx) in head_to_idx.iter() {
             for (transition_ch, dest) in self.transitions[*head].iter() {
                 let dest_head = unequal_sets.find(*dest);
-                new_transitions[*idx].insert(*transition_ch, dest_head);
+                new_transitions[*idx].insert(*transition_ch, *head_to_idx.get(&dest_head).unwrap());
             }
         }
-
+        
+        // create new end states
         let mut new_end_states = vec![];
         for end_state in self.end_states.iter() {
             let head = unequal_sets.find(*end_state);
-            new_end_states.push(head);
+            new_end_states.push(*head_to_idx.get(&head).unwrap());
         }
-
+        
         Self {
             num_states,
-            start_state: unequal_sets.find(self.start_state),
+            start_state: *head_to_idx.get(&unequal_sets.find(self.start_state)).unwrap(),
             end_states: new_end_states,
             transitions: new_transitions,
             alphabet: self.alphabet.clone(),
@@ -87,8 +90,6 @@ impl DFA {
     }
 
     fn get_equivalent_states(&self) -> Vec<(usize, usize)> {
-        // more than half of this memory will remain unused, but it's easier to index into this table
-        // in this way, i think it's worth the memory overhead, but should be tested.
         let minimize_table = self.compute_minimize_table();
 
         let mut equivalent_states = vec![];
@@ -103,7 +104,10 @@ impl DFA {
         equivalent_states
     }
 
-    fn compute_minimize_table(&self) -> Vec<Vec<usize>> {
+    fn compute_minimize_table(&self) -> Vec<Vec<i32>> {
+        // more than half of the space in the minimize table is wasted
+        // because we only need to store the upper triangle
+        // buts its easier to index into the table this way
         let mut minimize_table = self.initialize_minimize_table();
 
         let mut has_changed = true;
@@ -118,11 +122,16 @@ impl DFA {
                     }
 
                     for  alphabet_ch in &self.alphabet {
-                        let next_i = self.make_move(i, *alphabet_ch);
-                        let next_j = self.make_move(j, *alphabet_ch);
+                        let mut next_i = self.make_move(i, *alphabet_ch);
+                        let mut next_j = self.make_move(j, *alphabet_ch);
+
+                        // so i always index in the upper triangle
+                        if next_i > next_j {
+                            std::mem::swap(&mut next_i, &mut next_j);
+                        }
 
                         if minimize_table[next_i][next_j] != INVALID_STATE {
-                            minimize_table[next_i][next_j] = curr_iter;
+                            minimize_table[i][j] = curr_iter;
                             has_changed = true;
                             break;
                         }
@@ -138,7 +147,7 @@ impl DFA {
 
     /// @returns the initialized minimized table and vector of states to merge, with
     /// just stage-0 un-equal states marked
-    fn initialize_minimize_table(&self) -> Vec<Vec<usize>> {
+    fn initialize_minimize_table(&self) -> Vec<Vec<i32>> {
         let mut minimize_table = vec![vec![INVALID_STATE; self.num_states]; self.num_states];
 
         for i in 0..self.num_states {
@@ -148,7 +157,6 @@ impl DFA {
 
                 if i_is_final != j_is_final {
                     minimize_table[i][j] = 0;
-                    // ignore other part of the table since it's symmetric
                 }
             }
         }
