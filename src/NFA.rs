@@ -1,6 +1,6 @@
-use crate::{RegularExpression as RE, Visualizer::{VisualizerName}};
 use std::collections::{BTreeMap, BTreeSet};
-use crate::DisplayGraph::*;
+
+use crate::{RegularExpression as RE, DisplayGraph::*};
 
 #[derive(Debug)]
 pub struct NFA {
@@ -156,12 +156,6 @@ impl NFA {
         };
 
         (start, end)
-    }
-}
-
-impl VisualizerName for NFA {
-    fn get_name() -> String {
-        "NFA".to_string()
     }
 }
 

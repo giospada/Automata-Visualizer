@@ -1,9 +1,8 @@
-use crate::Error::*;
-use crate::Visualizer::VisualizerName;
 use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
-use crate::DisplayGraph::*;
+
+use crate::{DisplayGraph::*, Error::*};
 
 #[cfg(test)]
 mod tests;
@@ -62,12 +61,6 @@ impl ReOperator {
             ReOperator::Or(b1,b2) => vec![b1,b2],
             ReOperator::KleeneStar(b) => vec![b]
         }
-    }
-}
-
-impl VisualizerName for ReOperator {
-    fn get_name() -> String {
-        "Regex Syntax Tree".to_string()
     }
 }
 
