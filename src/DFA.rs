@@ -40,12 +40,22 @@ impl DFA {
         dfa.num_states += 1; 
         dfa.num_states - 1
     }
+
+    fn is_nfa_final_state(&mut self, states: &BTreeSet<usize>, nfa: &NFA) -> bool {
+        for state in states {
+            if nfa.is_final_state(*state) {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl From<&NFA> for DFA {
     fn from(nfa: &NFA) -> Self {
         let mut dfa = DFA::new();
-        let mut map_to_used = BTreeMap::new();
+        let mut state_to_index: BTreeMap<BTreeSet<usize>, usize> = BTreeMap::new();
 
         let start = nfa.epsilon_closure(&vec![nfa.get_start_state()]);
         let state_num = Self::add_state(&mut dfa, start);
@@ -54,26 +64,22 @@ impl From<&NFA> for DFA {
 
         while !queue.is_empty() {
             let current_state = queue.pop().unwrap();
-            let current_set = dfa.idx_to_nfa_states.as_ref().unwrap()[&current_state].clone();
+            let current_set: BTreeSet<usize> = dfa.idx_to_nfa_states.as_ref().unwrap()[&current_state].clone();
+
+            if dfa.is_nfa_final_state(&current_set, &nfa) {
+                dfa.end_states.push(current_state);
+            }
 
             for alphabet_char in nfa.get_alphabet() {
-                let mut next_set = BTreeSet::new();
-
-                for state in current_set.iter() {
-                    if nfa.get_transitions()[*state].contains_key(&alphabet_char) {
-                        for next_state in &nfa.get_transitions()[*state][&alphabet_char] {
-                            next_set.insert(*next_state);
-                        }
-                    }
-                }
-
-                let next_set = nfa.epsilon_closure(&next_set.into_iter().collect());
-                if !map_to_used.contains_key(&next_set) {
+                let mut next_set = nfa.make_move(&current_set, alphabet_char.clone());
+                next_set = nfa.epsilon_closure(&next_set.into_iter().collect());
+                
+                if !state_to_index.contains_key(&next_set) {
                     let next_state = Self::add_state(&mut dfa, next_set.clone());
-                    map_to_used.insert(next_set.clone(), next_state);
+                    state_to_index.insert(next_set.clone(), next_state);
                     queue.push(next_state);
                 }
-                let next_state = map_to_used.get(&next_set).unwrap();
+                let next_state = state_to_index.get(&next_set).unwrap();
                 dfa.transitions[current_state].insert(alphabet_char, *next_state);
             }
         }

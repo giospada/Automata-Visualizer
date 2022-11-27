@@ -29,12 +29,12 @@ impl NFA {
         self.start_state
     }
 
-    pub fn get_transitions(&self) -> &Vec<BTreeMap<char, Vec<usize>>> {
-        &self.transitions
-    }
-
     pub fn get_alphabet(&self) -> Vec<char> {
         self.used_alphabet.iter().cloned().collect()
+    }
+
+    pub fn is_final_state(&self, state: usize) -> bool {
+        self.end_states.contains(&state)
     }
 
     pub fn epsilon_closure(&self, states: &Vec<usize>) -> BTreeSet<usize> {
@@ -69,17 +69,13 @@ impl NFA {
         closure
     }
 
-    // This function will be used if you need to make computation animations
-    // with the NFA, after that, remember to delete this comment and the #[allow(dead_code)]
-    #[allow(dead_code)]
-    pub fn make_move(&self, states: &Vec<usize>, c: char) -> BTreeSet<usize> {
+    pub fn make_move(&self, states: &BTreeSet<usize>, c: char) -> BTreeSet<usize> {
         let mut new_states = BTreeSet::new();
+
         for state in states {
-            for i in self.transitions[*state].keys() {
-                if *i == c {
-                    for j in &self.transitions[*state][i] {
-                        new_states.insert(*j);
-                    }
+            if self.transitions[*state].contains_key(&c) {
+                for next_state in &self.transitions[*state][&c] {
+                    new_states.insert(*next_state);
                 }
             }
         }
