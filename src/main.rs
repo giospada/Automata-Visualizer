@@ -16,7 +16,7 @@ use EguiMain::EguiApp;
 fn main() {
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
-        "Automata Visualizer",
+        "My egui App",
         native_options,
         Box::new(|cc| Box::new(EguiApp::new(cc))),
     );
@@ -30,7 +30,7 @@ fn main() {
     web_options.follow_system_theme = false;
     
     eframe::start_web(
-        "Automata Visualizer", // hardcode it
+        "the_canvas_id", // hardcode it
         web_options,
         Box::new(|cc| Box::new(EguiApp::new(cc))),
     )
