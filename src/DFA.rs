@@ -5,7 +5,7 @@ use crate::NFA::NFA;
 use crate::RegularExpression as RE;
 use crate::Log::log;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DFA {
     num_states: usize,
     start_state: usize,
@@ -40,16 +40,6 @@ impl DFA {
         dfa.num_states += 1; 
         dfa.num_states - 1
     }
-
-    fn is_nfa_final_state(&mut self, states: &BTreeSet<usize>, nfa: &NFA) -> bool {
-        for state in states {
-            if nfa.is_final_state(*state) {
-                return true;
-            }
-        }
-
-        false
-    }
 }
 
 impl From<&NFA> for DFA {
@@ -66,7 +56,7 @@ impl From<&NFA> for DFA {
             let current_state = queue.pop().unwrap();
             let current_set: BTreeSet<usize> = dfa.idx_to_nfa_states.as_ref().unwrap()[&current_state].clone();
 
-            if dfa.is_nfa_final_state(&current_set, &nfa) {
+            if nfa.contains_final_state(&current_set) {
                 dfa.end_states.push(current_state);
             }
 

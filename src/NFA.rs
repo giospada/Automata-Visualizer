@@ -37,6 +37,16 @@ impl NFA {
         self.end_states.contains(&state)
     }
 
+    pub fn contains_final_state(&self, states: &BTreeSet<usize>) -> bool {
+        for state in states {
+            if self.is_final_state(*state) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn epsilon_closure(&self, states: &Vec<usize>) -> BTreeSet<usize> {
         let mut closure = BTreeSet::new();
         let mut visited = vec![false; self.num_states];
