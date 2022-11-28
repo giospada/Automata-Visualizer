@@ -1,3 +1,4 @@
+
 use egui::{
     emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
     Vec2,
@@ -49,6 +50,7 @@ impl DisplayGraph {
             last_parameter: DisplayGraphParameter::invalid(),
         }
     }
+
 
     fn calculate_each_node_position(&mut self, bfs_max_width: f32) {
         let params = self.last_parameter;
@@ -122,6 +124,7 @@ impl DisplayGraph {
 
     fn draw_edge(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
         for (from, to, _) in &self.edges {
+
             if from == to {
                 let origin = self.nodes_pos[*from];
                 let rotation = egui::emath::Rot2::from_angle(std::f32::consts::PI / 8.);
@@ -165,6 +168,7 @@ impl DisplayGraph {
 
         for (from, to, label) in &self.edges {
             if let Some(label) = label {
+
                 if (*to == *from) {
                     let origin = self.nodes_pos[*from];
                 
@@ -208,7 +212,12 @@ impl DisplayGraph {
         for (index, node) in self.nodes.iter().enumerate() {
             let pos = to_screen.transform_pos(self.nodes_pos[index]);
 
-            painter.circle_filled(pos, self.last_parameter.node_size / 2., COLOR_NODES);
+            painter.circle_filled(
+                pos,
+                self.last_parameter.node_size / 2.,
+                COLOR_NODES,
+            );
+
             painter.text(
                 pos,
                 egui::Align2::CENTER_CENTER,

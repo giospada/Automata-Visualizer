@@ -15,10 +15,12 @@ pub struct EguiApp  {
     // 0: Regex
     // 1: NFA
     // 2: DFA
+    // 3: Minimized DFA
     // a union structure would be useful for accessing the Visualizers
     // with both indixes and names, but it's problematic how to do it
     // in rust.
-    to_visualize: [Visualizer; 3],
+    to_visualize: [Visualizer; 4],
+
 }
 
 impl Default for EguiApp {
@@ -31,6 +33,8 @@ impl Default for EguiApp {
                 Visualizer::new("Regex Syntax Tree".to_string()), 
                 Visualizer::new("NFA".to_string()),
                 Visualizer::new("DFA".to_string()),
+                Visualizer::new("Minimized DFA".to_string()),
+
             ],
         }
     }
@@ -46,6 +50,7 @@ impl EguiApp {
             0 => |re: ReOperator| re.into(),
             1 => |re: ReOperator| NFA::from(&re).into(),
             2 => |re: ReOperator| DFA::from(&NFA::from(&re)).into(),
+            3 => |re: ReOperator| DFA::from(&NFA::from(&re)).get_minimized_dfa().into(),
             _ => panic!("Invalid index"),
         }
     }
