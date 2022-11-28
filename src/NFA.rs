@@ -223,7 +223,7 @@ mod test{
             Box::new(RE::ReOperator::Char('a')),
             Box::new(RE::ReOperator::Char('b')),
         );
-        let nfa = NFA::from_regex(&regex);
+        let nfa = NFA::from(&regex);
         println!("{:?}",nfa);
     }
 }

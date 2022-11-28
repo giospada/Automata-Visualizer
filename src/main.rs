@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 #[macro_use]
 mod Log;
+
+mod utils;
 mod EguiMain;
 mod RegularExpression;
 mod Visualizer;
