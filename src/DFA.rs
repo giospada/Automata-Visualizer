@@ -6,6 +6,7 @@ use crate::RegularExpression as RE;
 use crate::utils::DisjointUnionFind::DisjointUnionFind;
 use crate::Log::log;
 
+
 #[derive(Debug, Clone)]
 pub struct DFA {
     num_states: usize,
@@ -13,6 +14,7 @@ pub struct DFA {
     end_states: Vec<usize>,
     transitions: Vec<BTreeMap<char, usize>>,
     alphabet: Vec<char>,
+
 
     // TODO: use this in visualization
     idx_to_nfa_states: Option<BTreeMap<usize, BTreeSet<usize>>>,
@@ -217,6 +219,7 @@ impl From<&NFA> for DFA {
             }
         }
         dfa.alphabet = alphabet;
+
 
         dfa
     }

@@ -1,5 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+
+use log::info;
+
+
 use crate::{RegularExpression as RE, DisplayGraph::*};
 
 #[derive(Debug)]
@@ -122,7 +126,7 @@ impl NFA {
 
         let (start, end) = match regex {
             RE::ReOperator::Concat(left, right) => {
-                let (l_start,l_end) = self.recursive_from_regex(left,None);
+                let (l_start,l_end) = self.recursive_from_regex(left,first_option);
                 let (_r_start,r_end) = self.recursive_from_regex(right,Some(l_end));
 
                 (l_start,r_end)
@@ -185,7 +189,10 @@ impl Into<DisplayGraph> for NFA {
         graph.push(vec![self.start_state as usize]);        
         child.push(self.start_state);
         done[self.start_state]=true;
+        info!("to NFA");
+        info!("NFA: {:?}",self);
         while !child.is_empty() {
+            info!("child {:?}",child);
             let mut current_nodes=vec![];
             let mut newchild =vec![];    
             for index in child{

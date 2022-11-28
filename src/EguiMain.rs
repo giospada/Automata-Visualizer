@@ -20,6 +20,7 @@ pub struct EguiApp  {
     // with both indixes and names, but it's problematic how to do it
     // in rust.
     to_visualize: [Visualizer; 4],
+
 }
 
 impl Default for EguiApp {
@@ -33,6 +34,7 @@ impl Default for EguiApp {
                 Visualizer::new("NFA".to_string()),
                 Visualizer::new("DFA".to_string()),
                 Visualizer::new("Minimized DFA".to_string()),
+
             ],
         }
     }
