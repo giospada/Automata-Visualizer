@@ -7,6 +7,8 @@ mod Visualizer;
 mod DisplayGraph;
 mod Error;
 mod NFA;
+mod DFA;
+
 use EguiMain::EguiApp;
 
 // When compiling natively:

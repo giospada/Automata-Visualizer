@@ -1,16 +1,14 @@
 use egui::{emath::RectTransform, Color32, Painter, Pos2, Rect, Sense, Stroke, Vec2};
 
-const ARROW_TIP_LENGHT:f32 = 10.;
-const ARROW_WIDTH:f32=3.;
-const COLOR_EDGE:Color32 = Color32::BLUE ;
-const COLOR_NODES:Color32 = Color32::WHITE;
-const COLOR_LABEL_EDGE:Color32 = Color32::GRAY;
-const COLOR_LABEL_NODE:Color32 = Color32::BLACK;
-
-
+const ARROW_TIP_LENGHT: f32 = 10.;
+const ARROW_WIDTH: f32 = 3.;
+const COLOR_EDGE: Color32 = Color32::BLUE ;
+const COLOR_NODES: Color32 = Color32::WHITE;
+const COLOR_LABEL_EDGE: Color32 = Color32::GRAY;
+const COLOR_LABEL_NODE: Color32 = Color32::BLACK;
 
 pub struct DisplayGraph {
-    edges: Vec<(usize, usize, Option<char>)>,
+    edges: Vec<(usize, usize, Option<String>)>,
     nodes: Vec<String>,
     nodes_pos: Vec<Pos2>,
     nodes_bfs: Vec<Vec<usize>>,
@@ -36,7 +34,7 @@ impl DisplayGraphParameter {
 
 impl DisplayGraph {
     pub fn new(
-        edges: Vec<(usize, usize, Option<char>)>,
+        edges: Vec<(usize, usize, Option<String>)>,
         nodes: Vec<String>,
         nodes_bfs: Vec<Vec<usize>>,
     ) -> Self {
@@ -49,10 +47,11 @@ impl DisplayGraph {
         }
     }
 
-    fn calculate_each_node_position(&mut self,bfs_max_width:f32){
-        let params=self.last_parameter;
+    fn calculate_each_node_position(&mut self, bfs_max_width:f32) {
+        let params = self.last_parameter;
         let width_painting_area =
             bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
+
         for (current_bfs_depth, nodes_level) in self.nodes_bfs.iter().enumerate() {
             for (index, node) in nodes_level.iter().enumerate() {
                 self.nodes_pos[*node] = Pos2 {
@@ -100,12 +99,11 @@ impl DisplayGraph {
             let point_rect = Rect::from_center_size(screen_pos, Vec2 { x: size, y: size });
             let point_id = response.id.with(index);
             let point_response = ui.interact(point_rect, point_id, Sense::drag());
+
             *current_pos += point_response.drag_delta();
             *current_pos = to_screen.from().clamp(*current_pos);
         }
     }
-
-    
 
     fn  draw_arrow(painter: &Painter, origin: Pos2, vec: Vec2, stroke: Stroke) {
         use egui::emath::*;
@@ -113,6 +111,7 @@ impl DisplayGraph {
         let tip_length = ARROW_TIP_LENGHT;
         let tip = origin + vec;
         let dir = vec.normalized();
+
         painter.line_segment([origin, tip], stroke);
         painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
         painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
@@ -120,44 +119,48 @@ impl DisplayGraph {
 
 
     fn draw_edge(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
-
         for (from, to, _) in &self.edges {
             let origin = to_screen.transform_pos(self.nodes_pos[*from]);
             let end = to_screen.transform_pos(self.nodes_pos[*to]);
-            let vec = (end - origin.to_vec2()).to_vec2();
-            let dist = Pos2 {
+            let displacement_vec = (end - origin.to_vec2()).to_vec2();
+
+            let node_radius = Pos2 {
                 x: self.last_parameter.node_size / 2.,
                 y: self.last_parameter.node_size / 2.,
             };
-            let direction = vec.normalized() * dist.to_vec2();
+            let node_radius_vec = displacement_vec.normalized() * node_radius.to_vec2();
+
             Self::draw_arrow(
                 painter,
-                origin+direction,
-                vec - direction*2.,
+                origin + node_radius_vec,
+                displacement_vec - node_radius_vec * 2.,
                 Stroke::new(ARROW_WIDTH, COLOR_EDGE),
             );
         }
 
         for (from, to, label) in &self.edges {
             if let Some(label) = label {
-                let pos = self.nodes_pos[*from];
-                let diff= (self.nodes_pos[*to] - self.nodes_pos[*from].to_vec2()).to_vec2();
-                let pos =
-                    pos + diff / 2.;
+                let displacement_vec = (self.nodes_pos[*to] - self.nodes_pos[*from].to_vec2()).to_vec2();
+                let middle_point = self.nodes_pos[*from] + displacement_vec / 2.;
 
-                let dir=diff.normalized();
-                let rot = egui::emath::Rot2::from_angle(std::f32::consts::TAU / 4.);
-                let padding_from_arrow:f32 = 5.; 
-                let pos = pos - dir*5.;
-                let pos = pos- padding_from_arrow*(rot*dir);
+                let displacement_dir = displacement_vec.normalized();
+                let rotation = egui::emath::Rot2::from_angle(std::f32::consts::PI / 2.);
+                let padding_from_arrow: f32 = 5.; 
+                
+                // label is drawed perpendicularly to the arrow, from middle point and little displacement, 
+                // at padding_from_arrow distance from the arrow
+                let pos = middle_point - displacement_dir * 5.;
+                let pos = 
+                    pos - padding_from_arrow * (rotation * displacement_dir);
                 let pos = to_screen.transform_pos(pos);
+
                 painter.text(
                     pos,
                     egui::Align2::CENTER_CENTER,
                     label.to_string(),
                     egui::TextStyle::Body.resolve(ui.style()),
                     COLOR_LABEL_EDGE,
-                    );
+                );
             }
         }
     }
@@ -170,24 +173,19 @@ impl DisplayGraph {
                 pos,
                 self.last_parameter.node_size / 2.,
                 COLOR_NODES,
-                );
+            );
             painter.text(
                 pos,
                 egui::Align2::CENTER_CENTER,
                 node.clone(),
                 egui::TextStyle::Body.resolve(ui.style()),
                 COLOR_LABEL_NODE,
-                );
+            );
         }
     }
 
     pub fn draw(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
         self.draw_edge(painter, to_screen, ui);
         self.draw_nodes(painter, to_screen, ui);
-
     }
-}
-
-pub trait ToDisplayGraph {
-    fn to_display_graph(&self) -> DisplayGraph;
 }

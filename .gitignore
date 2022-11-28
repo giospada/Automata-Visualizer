@@ -2,3 +2,5 @@
 dist/*
 assets/*
 */index.html/*
+
+Cargo.lock

@@ -1,13 +1,13 @@
-use crate::Error::*;
 use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
-use crate::DisplayGraph::*;
+
+use crate::{DisplayGraph::*, Error::*};
 
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ReOperator {
     Char(char),
     Concat(Box<ReOperator>, Box<ReOperator>),
@@ -64,16 +64,17 @@ impl ReOperator {
     }
 }
 
-impl ToDisplayGraph for ReOperator{
-    // fa una bfs 
-     fn to_display_graph(&self) -> DisplayGraph{
-        let mut child =vec![];
+impl Into<DisplayGraph> for ReOperator{
+     fn into(self) -> DisplayGraph{
+        let mut child = vec![];
         let mut graph=vec![];
         let mut labels=vec![];
-        let mut edge:Vec<(usize,usize,Option<char>)>=Vec::new();
+        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
         let mut number_nodes=1 as usize;
+
         graph.push(vec![0 as usize]);        
-        child.push((0,self));
+        child.push((0, &self));
+
         while !child.is_empty() {
             let mut current_nodes=vec![];
             let mut newchild =vec![];    
@@ -90,11 +91,11 @@ impl ToDisplayGraph for ReOperator{
 
             }
             graph.push(current_nodes);
-            child=newchild;
+            child = newchild;
         }
+
         DisplayGraph::new(edge,labels,graph)
     }
-    
 }
 
 /// parse until closing parens or end of string

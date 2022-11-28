@@ -1,39 +1,61 @@
+use eframe::egui;
+use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
+
 use crate::DisplayGraph::*;
 use crate::Visualizer::*;
 use crate::RegularExpression::*;
 use crate::NFA::*;
-use eframe::egui;
-use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
+use crate::DFA::*;
 
-pub struct EguiApp {
-    re: Visualizer,
-    nfa: Visualizer,
+pub struct EguiApp  {
     error: Option<String>,
     regex_text: String,
+
+    // This is indexed accordingly
+    // 0: Regex
+    // 1: NFA
+    // 2: DFA
+    // a union structure would be useful for accessing the Visualizers
+    // with both indixes and names, but it's problematic how to do it
+    // in rust.
+    to_visualize: [Visualizer; 3],
 }
 
 impl Default for EguiApp {
     fn default() -> Self {
         Self {
-            re: Visualizer::new("Regular Expression".to_string()),
-            nfa: Visualizer::new("NFA".to_string()),
             error: None,
             regex_text: String::new(),
+
+            to_visualize: [
+                Visualizer::new("Regex Syntax Tree".to_string()), 
+                Visualizer::new("NFA".to_string()),
+                Visualizer::new("DFA".to_string()),
+            ],
         }
     }
 }
 
 impl EguiApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext) -> Self {
         Self::default()
+    }
+
+    pub fn get_converter(index: i32) -> impl Fn(ReOperator) -> DisplayGraph {
+        match index {
+            0 => |re: ReOperator| re.into(),
+            1 => |re: ReOperator| NFA::from(&re).into(),
+            2 => |re: ReOperator| DFA::from(&NFA::from(&re)).into(),
+            _ => panic!("Invalid index"),
+        }
     }
 }
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("Main").show(ctx, |ui| {
-            for (index, visualizer) in [&mut self.nfa, &mut self.re].into_iter().enumerate() {
-                ui.heading(&visualizer.name);
+            for (index, visualizer) in self.to_visualize.iter_mut().enumerate() {
+                ui.heading(&visualizer.box_title);
                 if index == 0 {
                     ui.horizontal(|ui| {
                         ui.label("inserisci la regex");
@@ -41,24 +63,20 @@ impl eframe::App for EguiApp {
                             .on_hover_text("Enter a regular expression");
                     });
                 }
-                if ui.button(format!("Generate {}", visualizer.name)).clicked() {
+                if ui.button(format!("Generate {}", visualizer.box_title)).clicked() {
                     match ReOperator::from_string(&self.regex_text) {
                         Ok(re) => {
-                            let graph = if index == 1 {
-                                NFA::from_regex(&re).to_display_graph()
-                            } else {
-                                re.to_display_graph()
-                            };
-                            visualizer.generate_graph(graph);
-                            self.error=None;
+                            visualizer.set_graph(Self::get_converter(index as i32)(re));
+                            self.error = None;
                         }
+                        
                         Err(e) => {
                             self.error = Some(e.to_string());
                         }
                     };
                 }
 
-                ui.collapsing(format!("{} visualizer option", visualizer.name), |ui| {
+                ui.collapsing(format!("{} visualizer option", visualizer.box_title), |ui| {
                     ui.add(
                         egui::Slider::new(&mut visualizer.padding_x, 10.0..=100.0)
                             .text("padding x"),
@@ -78,10 +96,10 @@ impl eframe::App for EguiApp {
             }
           
         });
-        for visualizer in [&mut self.nfa, &mut self.re].into_iter() {
+        for visualizer in self.to_visualize.iter_mut() {
             visualizer.check_open();
-            let syntaxTree = Window::new(format!("{}", visualizer.name));
-            let syntaxTree = syntaxTree.open(&mut visualizer.open);
+            let syntaxTree = Window::new(format!("{}", visualizer.box_title));
+            let syntaxTree = syntaxTree.open(&mut visualizer.is_win_open);
             let syntaxTree = syntaxTree.scroll2([true, true]);
             syntaxTree.show(ctx, |ui| {
                 Frame::canvas(ui.style()).show(ui, |ui| {
