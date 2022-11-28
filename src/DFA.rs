@@ -3,7 +3,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::DisplayGraph::{DisplayGraph};
 use crate::NFA::NFA;
 use crate::RegularExpression as RE;
-use crate::Log::log;
 
 #[derive(Debug, Clone)]
 pub struct DFA {
