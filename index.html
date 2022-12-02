@@ -8,7 +8,7 @@
     <title>eframe template</title>
 
     <!-- config for our rust wasm binary. go to https://trunkrs.dev/assets/#rust for more customization -->
-    <script type="module">import init from './Automata-visualizer-821beddff050c5a0.js';init('./Automata-visualizer-821beddff050c5a0_bg.wasm');</script>
+    <script type="module">import init from './Automata-visualizer-c48390bb93edee3d.js';init('./Automata-visualizer-c48390bb93edee3d_bg.wasm');</script>
     <!-- this is the base url relative to which other urls will be constructed. trunk will insert this from the public-url option -->
     <base href="./">
 
@@ -116,23 +116,33 @@
 
     </style>
 
-<link rel="preload" href="./Automata-visualizer-821beddff050c5a0_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="./Automata-visualizer-821beddff050c5a0.js"></head>
+<link rel="preload" href="./Automata-visualizer-c48390bb93edee3d_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="./Automata-visualizer-c48390bb93edee3d.js"></head>
 
 <body>
     <!-- The WASM code will resize the canvas dynamically -->
     <!-- the id is hardcoded in main.rs . so, make sure both match. -->
     <canvas id="the_canvas_id"></canvas>
 
+      <div class="centered" id="loading_text">
+        <p style="font-size:16px">
+            Loading…
+        </p>
+        <div class="lds-dual-ring"></div>
+    </div>
     <!--Register Service Worker. this will cache the wasm / js scripts for offline use (for PWA functionality). -->
     <!-- Force refresh (Ctrl + F5) to load the latest files instead of cached files  -->
     <script>
         // We disable caching during development so that we always view the latest version.
         if ('serviceWorker' in navigator && window.location.hash !== "#dev") {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('sw.js');
-            });
-        }
+                window.addEventListener('load', function () {
+                        navigator.serviceWorker.register('sw.js')
+                          //.then(reg => console.log('Service Worker Registered'))
+                          //.catch(err => console.log("Error"));
+                        .then(temp => document.getElementById("loading_text").remove())
+                        .catch(temp => document.getElementById("loading_text").remove());
+                    });
+            }
     </script>
 
 
