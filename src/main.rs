@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
-
 mod app;
 mod utils;
 mod display;
 mod automata;
+mod grammar;
 mod error;
 
 use app::EguiApp;
