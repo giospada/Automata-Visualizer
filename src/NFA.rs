@@ -1,8 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
-
-
 use log::info;
-
 
 use crate::{RegularExpression as RE, DisplayGraph::*};
 

@@ -1,7 +1,7 @@
 
 use egui::{
-    emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
-    Vec2,
+    emath::RectTransform, epaint::CubicBezierShape, Color32, 
+    Painter, Pos2, Rect, Sense, Stroke, Vec2,
 };
 
 const ARROW_TIP_LENGHT: f32 = 10.;

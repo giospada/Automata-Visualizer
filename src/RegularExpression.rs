@@ -2,7 +2,8 @@ use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use crate::{DisplayGraph::*, Error::*};
+use crate::DisplayGraph::DisplayGraph;
+use crate::Error::{InvalidCharacter, UnvalidParentesis, InvalidTokenError};
 
 #[cfg(test)]
 mod tests;
