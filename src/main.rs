@@ -1,15 +1,12 @@
 #![allow(non_snake_case)]
-mod utils;
-mod EguiMain;
-mod RegularExpression;
-mod Visualizer;
-mod DisplayGraph;
-mod Error;
-mod NFA;
-mod DFA;
 
-use EguiMain::EguiApp;
-use log::Level;
+mod app;
+mod utils;
+mod display;
+mod automata;
+mod error;
+
+use app::EguiApp;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

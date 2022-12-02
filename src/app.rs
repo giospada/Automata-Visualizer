@@ -1,11 +1,11 @@
 use eframe::egui;
 use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
 
-use crate::DisplayGraph::{DisplayGraph, DisplayGraphParameter};
-use crate::Visualizer::Visualizer;
-use crate::RegularExpression::ReOperator;
-use crate::NFA::NFA;
-use crate::DFA::DFA;
+use crate::display::display_graph::{DisplayGraph, DisplayGraphParameter};
+use crate::display::visualizer::Visualizer;
+use crate::automata::regular_expression::ReOperator;
+use crate::automata::nfa::NFA;
+use crate::automata::dfa::DFA;
 
 pub struct EguiApp  {
     error: Option<String>,

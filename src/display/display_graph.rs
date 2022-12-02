@@ -169,7 +169,7 @@ impl DisplayGraph {
         for (from, to, label) in &self.edges {
             if let Some(label) = label {
 
-                if (*to == *from) {
+                if *to == *from {
                     let origin = self.nodes_pos[*from];
                 
                     let direction_vec =
