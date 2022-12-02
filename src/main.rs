@@ -22,6 +22,7 @@ fn main() {
 // when compiling to web using trunk.
 #[cfg(target_arch = "wasm32")]
 fn main() {
+    use log::Level;
     console_log::init_with_level(Level::Debug);
 
     let mut web_options = eframe::WebOptions::default();
