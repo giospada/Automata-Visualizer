@@ -1,10 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
-
-
 use log::info;
 
-
-use crate::{RegularExpression as RE, DisplayGraph::*};
+use crate::automata::regular_expression as RE;
+use crate::display::display_graph::DisplayGraph;
 
 #[derive(Debug)]
 pub struct NFA {

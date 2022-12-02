@@ -1,4 +1,4 @@
-use crate::DisplayGraph::*;
+use crate::display::display_graph::DisplayGraph;
 
 pub struct Visualizer {
     pub box_title: String,

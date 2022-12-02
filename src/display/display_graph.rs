@@ -1,7 +1,7 @@
 
 use egui::{
-    emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
-    Vec2,
+    emath::RectTransform, epaint::CubicBezierShape, Color32, 
+    Painter, Pos2, Rect, Sense, Stroke, Vec2,
 };
 
 const ARROW_TIP_LENGHT: f32 = 10.;
@@ -169,7 +169,7 @@ impl DisplayGraph {
         for (from, to, label) in &self.edges {
             if let Some(label) = label {
 
-                if (*to == *from) {
+                if *to == *from {
                     let origin = self.nodes_pos[*from];
                 
                     let direction_vec =
