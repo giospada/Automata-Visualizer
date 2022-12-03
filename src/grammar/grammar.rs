@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
 use crate::automata::dfa::DFA;
-use crate::map;
 
 pub type NonTerminal = usize;
 pub type Terminal = char;
@@ -209,6 +208,14 @@ impl Grammar {
         
         nullable
     }
+
+    pub fn remove_useless(&mut self) {
+        unimplemented!("remove_useless");
+    }
+
+    pub fn remove_cycles(&mut self) {
+        unimplemented!("remove_cycles");
+    }
 }
 
 impl From<&DFA> for Grammar {
@@ -244,6 +251,7 @@ impl From<&DFA> for Grammar {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::map;
 
     fn get_test_grammar() -> Grammar {
         // S -> Ab | c
