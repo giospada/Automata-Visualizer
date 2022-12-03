@@ -33,6 +33,51 @@ impl DFA {
         }
     }
 
+    /// Returns a DFA described by the input parameters.
+    /// if alphabet is None, the alphabet is inferred from the transitions.
+    pub fn from_state(
+        num_states: usize,
+        start_state: usize, 
+        end_states: Vec<usize>, 
+        transitions: Vec<BTreeMap<char, usize>>,
+        alphabet: Option<Vec<char>>,
+    ) -> Self {
+        let alphabet = alphabet.unwrap_or_else(|| {
+            let mut alphabet = Vec::new();
+            for transition in &transitions {
+                for c in transition.keys() {
+                    // NOTE: this is O(n) but check for contain, but alphabet is small
+                    // so it wouldn't be a problem, remember if later you need to optimize
+                    if !alphabet.contains(c) {
+                        alphabet.push(*c);
+                    }
+                }
+            }
+            alphabet
+        });
+
+        Self {
+            num_states: num_states,
+            start_state,
+            end_states,
+            transitions,
+            alphabet,
+            idx_to_nfa_states: None,
+        }
+    }
+
+    pub fn get_start_state(&self) -> usize {
+        self.start_state
+    }
+
+    pub fn get_end_states(&self) -> &Vec<usize> {
+        &self.end_states
+    }
+
+    pub fn get_transitions(&self) -> &Vec<BTreeMap<char, usize>> {
+        &self.transitions
+    }
+
     pub fn get_minimized_dfa(&self) -> Self {
         let equivalent_states = self.get_equivalent_states();
         let mut unequal_sets = DisjointUnionFind::new(self.num_states);

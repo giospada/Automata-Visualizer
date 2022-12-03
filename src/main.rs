@@ -6,6 +6,9 @@ mod automata;
 mod grammar;
 mod error;
 
+#[macro_use]
+mod macros;
+
 use app::EguiApp;
 
 // When compiling natively:

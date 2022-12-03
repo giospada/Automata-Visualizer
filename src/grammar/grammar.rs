@@ -1,25 +1,24 @@
 use std::collections::BTreeSet;
-use log::info;
 
-use crate::DFA::DFA;
-
+use crate::automata::dfa::DFA;
+use crate::map;
 
 pub type NonTerminal = usize;
 pub type Terminal = char;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Letter {
     NonTerminal(NonTerminal),
     Terminal(Terminal),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct Production {
     lhs: NonTerminal,
     rhs: Vec<Letter>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct Grammar {
     start_symbol: NonTerminal,
     productions: Vec<Production>,
@@ -212,7 +211,6 @@ impl Grammar {
     }
 }
 
-// TODO: fix me when the dfa is ready, I AM UNTESTED! WATCHOUT!
 impl From<&DFA> for Grammar {
     fn from(dfa: &DFA) -> Self {
         // NOTE: the fact that i assume non terminal is usize, makes the grammar and DFA
@@ -222,20 +220,20 @@ impl From<&DFA> for Grammar {
 
         for (idx, transitions) in dfa.get_transitions().iter().enumerate() {
             for (transition_ch, dest) in transitions.iter() {
-                let lhs = Letter::Nonterminal(idx);
-                let rhs = vec![Letter::Terminal(*transition_ch), Letter::Nonterminal(*dest)];
-                productions.push(Production { lhs: *lhs, rhs });
+                let lhs = idx;
+                let rhs = vec![Letter::Terminal(*transition_ch), Letter::NonTerminal(*dest)];
+                productions.push(Production { lhs: lhs, rhs });
             }
         }
 
-        for end_state in dfa.get_end_states().iter() {
-            let lhs = Letter::Nonterminal(*end_state);
+        for end_state in dfa.get_end_states() {
+            let lhs = *end_state;
             let rhs = vec![Letter::Terminal(EPSILON)];
-            productions.push(Production { lhs: *lhs, rhs });
+            productions.push(Production { lhs: lhs, rhs });
         }
 
         Self { 
-            start_symbol: Letter::Nonterminal(dfa.get_start_state()),
+            start_symbol: dfa.get_start_state(),
             productions,
 
             nullable: None,
@@ -288,5 +286,58 @@ mod test {
         let follow = grammar.follow(&1);
         assert_eq!(follow.len(), 1);
         assert!(follow.contains(&'b'));
+    }
+
+    #[test]
+    fn test_nullable() {
+        let grammar = get_test_grammar();
+
+        let nullable = grammar.get_nullable();
+        assert_eq!(nullable.len(), 1);
+        assert!(nullable.contains(&1));
+    }
+
+    #[test]
+    fn test_dfa_conversion() {
+        // this dfa should recognize ba*
+        let dfa = DFA::from_state(
+            3,
+            0, 
+            vec![1], 
+            vec![
+                map! { 
+                    'a' => 2,
+                    'b' => 1
+                },
+                map! { 
+                    'a' => 1,
+                    'b' => 2
+                },
+                map! { 
+                    'a' => 2,
+                    'b' => 2
+                },
+            ],            
+            None
+        );
+
+        let grammar = Grammar::from(&dfa);
+
+        // FIXME: the order in the production matters, but it shouldn't be the case.
+        let result = Grammar {
+            start_symbol: 0,
+            productions: vec![
+                Production { lhs: 0, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(2)] },
+                Production { lhs: 0, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(2)] },
+                Production { lhs: 2, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(2)] },
+                Production { lhs: 2, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(2)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal(EPSILON)] },
+            ],
+            nullable: None,
+        };
+
+        assert_eq!(grammar, result);
     }
 }
