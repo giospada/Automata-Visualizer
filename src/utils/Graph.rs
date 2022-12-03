@@ -46,7 +46,7 @@ impl Graph {
         id
     }
     pub fn addEdge(&mut self,from:IndNode,to:IndNode,label:Option<String>)->IndEdge{
-        let id=self.nodes.len();
+        let id=self.edges.len();
         //TODO in future version we need to check if the indNodee are inside the graph 
         let edge=Edge{
             id,
@@ -55,11 +55,12 @@ impl Graph {
             label
         };
         self.nodes[from].edges.push(id);
+        self.edges.push(edge);
         id
     }
     pub fn bfs(&self,start_node:IndNode)->Vec<Vec<IndNode>>{
         //store all index
-        let mut set:BTreeSet<IndNode>=(0..self.nodes.len()-1).into_iter().collect();
+        let mut set:BTreeSet<IndNode>=(0..self.nodes.len()).into_iter().collect();
         let mut output=self.bfs_connected_graph(start_node,&mut set);
         while set.is_empty(){
             match set.iter().next() {
@@ -89,7 +90,9 @@ impl Graph {
                     }
                 },
                 Some(ind) => {
-                    self.nodes[ind].edges.iter().for_each(|edge_ind|{
+                    let node=&self.nodes[ind];
+                    node.edges.iter().for_each(|edge_ind|{
+                         
                         let to=self.edges[*edge_ind].to;
                         if not_explored.contains(&to) {
                             not_explored.remove(&to);
@@ -114,7 +117,7 @@ mod test {
     fn bfs_test(){
         let mut g=Graph::new();
         let s=g.addNode(None);
-        let other:Vec<IndNode>=(0..4).into_iter().map(|_| {g.addNode(None)}).collect();
+        let other:Vec<IndNode>=(0..3).into_iter().map(|_| {g.addNode(None)}).collect();
         g.addEdge(s,other[0],None);
         g.addEdge(s,other[1],None);
         g.addEdge(other[0],other[2],None);

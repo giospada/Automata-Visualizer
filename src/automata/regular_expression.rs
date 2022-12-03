@@ -2,6 +2,7 @@ use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
 
+use crate::utils::Graph::Graph;
 use crate::display::display_graph::DisplayGraph;
 use crate::error::{InvalidCharacter, UnvalidParentesis, InvalidTokenError};
 
@@ -62,6 +63,13 @@ impl ReOperator {
     }
 }
 
+
+impl Into<Graph> for ReOperator{
+     fn into(self) -> Graph{
+     let g =Graph::new();
+        g
+    }
+}
 impl Into<DisplayGraph> for ReOperator{
      fn into(self) -> DisplayGraph{
         let mut child = vec![];
