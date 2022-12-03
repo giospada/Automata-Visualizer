@@ -1,2 +1,2 @@
 pub mod DisjointUnionFind;
-pub mod Graph;
+pub mod graph;

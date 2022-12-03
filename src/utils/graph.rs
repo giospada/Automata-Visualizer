@@ -1,7 +1,7 @@
 use std::collections::{BTreeSet, VecDeque};
 
-type IndNode = usize;
-type IndEdge = usize;
+pub type IndNode = usize;
+pub type IndEdge = usize;
 
 //TODO label can be set to a generic type
 pub struct Edge {
