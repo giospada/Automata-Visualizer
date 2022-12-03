@@ -100,6 +100,14 @@ impl Into<DisplayGraph> for ReOperator{
 /// concatenation is left associative
 /// or is right associative
 /// kleene is an operation on a single character, or on parens.
+/// 
+/// this parser return the re operator of the CURRENT SCOPE
+/// this means that if ((aaa)bbb), it returns the re operator for this
+/// scope, which is (aaa)bbb, and it's called recursively on the scope of aaa
+/// when it sees other scoping character.
+/// 
+/// Scoping caracters are ( and |, these two caracters are used to enter in new scope
+/// the caracter ) is used to exit from the current scope.
 fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<ReOperator>, Box<dyn Error>> {
     if open_parens < &mut 0 {
         return Err(Box::new(UnvalidParentesis {}));
@@ -111,6 +119,8 @@ fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<R
     while chars.peek().is_some() {
         parse_tree = elaborate_next_token(chars, Some(parse_tree), open_parens)?;
 
+        // this means that the recursive call has closed the parens
+        // so the scope of the current parentesis is over, and we should return.
         if curr_parentesis > open_parens.clone() {
             break;
         }
@@ -119,7 +129,12 @@ fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<R
     Ok(parse_tree)
 }
 
-fn elaborate_next_token(chars: &mut Peekable<Chars>, mut tree: Option<Box<ReOperator>>, open_parens: &mut i32) -> Result<Box<ReOperator>, Box<dyn Error>> {
+/// returns the re operator for a single token, described by the same grammar in [parse_token]
+fn elaborate_next_token(
+    chars: &mut Peekable<Chars>, 
+    mut tree: Option<Box<ReOperator>>, 
+    open_parens: &mut i32
+) -> Result<Box<ReOperator>, Box<dyn Error>> {
     if chars.peek().is_none() {
         if let Some(t) = tree {
             return Ok(t);
@@ -191,10 +206,34 @@ fn elaborate_next_token(chars: &mut Peekable<Chars>, mut tree: Option<Box<ReOper
     }
 }
 
+/// this function returns the next token in the regexp, and advances the chars iterator accordingly
+/// 
+/// remember that a token is described by the same grammar of [parse_token]
+fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>> {
+    let mut token = String::new();
+
+    while chars.peek().is_some() && chars.peek().unwrap() != &'|' &&
+        chars.peek().unwrap() != &')' && chars.peek().unwrap() != &'(' {
+        let ch = chars.next().unwrap();
+
+        if !is_valid_char(ch) {
+            return Err(Box::new(InvalidTokenError::new(
+                "Invalid character in token".to_string(),
+            )));
+        }
+        token.push(ch);
+    }
+
+    Ok(token)
+}
+
 /// token is a valid regular expression without parenthesis nor Or operator
-/// Described by
+/// Described by the following grammar:
+/// 
 /// S -> ε | A | S(* | S)
+/// 
 /// A -> [a-z] | [A-Z] | [0-9]
+/// 
 fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
     if token.len() == 0 {
         return Err(Box::new(InvalidTokenError::new("Empty token".to_string())));
@@ -212,7 +251,16 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
     Ok(tree_top)
 }
 
-/// assume that at least one char is still available.
+/// a node is defined as a single character in the regexp alfabet or couple <char, kleene star>
+/// this function returns the next node in the regexp, and advances the chars iterator accordingly
+/// 
+/// example:
+/// 
+/// if chars is a, b, *
+/// when it's it just returns a node with label a
+/// 
+/// when it's at b it returns a correct box operator with label * and b as child
+/// 
 fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
     let curr_char = chars.next().unwrap();
     if !is_valid_char(curr_char) {
@@ -239,24 +287,6 @@ fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn
             )));
         }
     }
-}
-
-fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>> {
-    let mut token = String::new();
-
-    while chars.peek().is_some() && chars.peek().unwrap() != &'|' &&
-        chars.peek().unwrap() != &')' && chars.peek().unwrap() != &'(' {
-        let ch = chars.next().unwrap();
-
-        if !is_valid_char(ch) {
-            return Err(Box::new(InvalidTokenError::new(
-                "Invalid character in token".to_string(),
-            )));
-        }
-        token.push(ch);
-    }
-
-    Ok(token)
 }
 
 fn is_valid_char(c: char) -> bool {
