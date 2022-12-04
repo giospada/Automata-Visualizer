@@ -31,6 +31,10 @@ pub struct Grammar {
 const EPSILON: char = 'ε';
 const STRING_END: char = '$';
 
+// NOTE: this could be in conflict with the Terminal symbols, so
+// it is MANDATORY that the Terminal doesn´t have dots in it!
+const ITEM_SEP: char = '.';
+
 impl Grammar {
     pub fn first(&mut self, letter: &Letter) -> BTreeSet<Terminal> {
         if let None = self.nullable {
@@ -387,6 +391,31 @@ impl Grammar {
 
         adj_list
     }
+
+    pub fn get_itemization(&self) -> Vec<Production> {
+        let mut itemized_transitions = vec![];
+        for production in self.productions.iter() {
+            if production.rhs.len() == 1 && production.rhs[0] == Letter::Terminal(EPSILON) {
+                itemized_transitions.push(Production {
+                    lhs: production.lhs,
+                    rhs: vec![Letter::Terminal(ITEM_SEP)]
+                });
+                continue;
+            }
+
+            for i in 0..=production.rhs.len() {
+                let mut rhs = production.rhs.clone();
+
+                rhs.insert(i, Letter::Terminal(ITEM_SEP));
+                itemized_transitions.push(Production {
+                    lhs: production.lhs,
+                    rhs: rhs
+                });
+            }
+        }
+
+        itemized_transitions
+    }
 }
 
 impl From<&DFA> for Grammar {
@@ -595,5 +624,29 @@ mod test {
         grammar.remove_unitary_cycles();
 
         assert_eq!(grammar, result);
+    }
+
+    #[test]
+    fn test_itemization() {
+        let grammar = get_test_grammar();
+
+        let items = grammar.get_itemization();
+
+        let result_productions = vec![
+            Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(1), Letter::Terminal('b')] },
+            Production { lhs: 0, rhs: vec![Letter::NonTerminal(1), Letter::Terminal(ITEM_SEP), Letter::Terminal('b')] },
+            Production { lhs: 0, rhs: vec![Letter::NonTerminal(1), Letter::Terminal('b'), Letter::Terminal(ITEM_SEP)] },
+
+            Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('c')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal('c'), Letter::Terminal(ITEM_SEP)] },
+            
+            Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('a'), Letter::NonTerminal(1)] },
+            Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::Terminal(ITEM_SEP), Letter::NonTerminal(1)] },
+            Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1), Letter::Terminal(ITEM_SEP)] },
+            Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP)] },
+        ];
+
+        assert!(items.iter().all(|item| result_productions.contains(item)));
+        assert!(result_productions.iter().all(|item| items.contains(item)));
     }
 }
