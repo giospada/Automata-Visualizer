@@ -2,7 +2,7 @@ use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use crate::utils::Graph::Graph;
+use crate::utils::Graph;
 use crate::display::display_graph::DisplayGraph;
 use crate::error::{InvalidCharacter, UnvalidParentesis, InvalidTokenError};
 

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::display::display_graph::{DisplayGraph};
 use crate::automata::nfa::NFA;
 use crate::automata::regular_expression as RE;
-use crate::utils::DisjointUnionFind::DisjointUnionFind;
+use crate::utils::DisjointUnionFind;
 
 
 #[derive(Debug, Clone)]

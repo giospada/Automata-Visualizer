@@ -32,7 +32,7 @@ impl Graph {
             edges: vec![],
         }
     }
-    pub fn addNode(&mut self, label: Option<String>) -> IndNode {
+    pub fn add_node(&mut self, label: Option<String>) -> IndNode {
         let id = self.nodes.len();
         let mut node = Node {
             id,
@@ -42,7 +42,7 @@ impl Graph {
         self.nodes.push(node);
         id
     }
-    pub fn addEdge(&mut self, from: IndNode, to: IndNode, label: Option<String>) -> IndEdge {
+    pub fn add_edge(&mut self, from: IndNode, to: IndNode, label: Option<String>) -> IndEdge {
         let id = self.edges.len();
         //TODO in future version we need to check if the indNodee are inside the graph
         let edge = Edge {
@@ -116,11 +116,11 @@ mod test {
     #[test]
     fn bfs_test() {
         let mut g = Graph::new();
-        let s = g.addNode(None);
-        let other: Vec<IndNode> = (0..4).into_iter().map(|_| g.addNode(None)).collect();
-        g.addEdge(s, other[0], None);
-        g.addEdge(s, other[1], None);
-        g.addEdge(other[0], other[2], None);
+        let s = g.add_node(None);
+        let other: Vec<IndNode> = (0..4).into_iter().map(|_| g.add_node(None)).collect();
+        g.add_edge(s, other[0], None);
+        g.add_edge(s, other[1], None);
+        g.add_edge(other[0], other[2], None);
 
         assert_eq!(vec![vec![0], vec![1, 2], vec![3], vec![4]], g.bfs(s));
     }
