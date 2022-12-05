@@ -216,10 +216,44 @@ impl From<&RE::ReOperator> for NFA {
 impl Into<Graph> for NFA {
     fn into(self) -> Graph {
         let mut g = Graph::new();
-        let start_state = g.addNode(Some(format!("s:{}", self.start_state)));
-        let used = self.end_states.collect::<BTreeSet<usize>>
+
+        let finals_nodes = self
+            .end_states
+            .clone()
+            .into_iter()
+            .collect::<BTreeSet<usize>>();
+
+        let get_label = |node| {
+            if node == self.start_state {
+                format!("s:{}", node)
+            } else if finals_nodes.contains(&node) {
+                format!("e:{}", node)
+            } else {
+                format!("{}", node)
+            }
+        };
+
+        let translate_table = (0..self.num_states)
+            .map(|node| (node, g.add_node(Some(get_label(node)))))
+            .collect::<BTreeMap<usize, usize>>();
+
+        self.transitions.iter().enumerate().for_each(|(from, adj)| {
+            adj.iter().for_each(|(label, to_list)| {
+                to_list.iter().for_each(|to| {
+                    g.add_edge(
+                        translate_table[&from],
+                        translate_table[to],
+                        Some(format!("{}", label)),
+                    );
+                });
+            })
+        });
+        let _start_node = translate_table[&self.start_state];
+        // TODO: attenzione a quellli che vanno nello stesso nodo
+        g
     }
 }
+
 impl Into<DisplayGraph> for NFA {
     fn into(self) -> DisplayGraph {
         let mut done = vec![false; self.num_states];

@@ -62,10 +62,10 @@ impl ReOperator {
         }
     }
     fn build_recursive_graph(&self, graph: &mut Graph) -> IndNode {
-        let top = graph.addNode(Some(self.label()));
+        let top = graph.add_node(Some(self.label()));
         for rep in self.childs() {
             let child = rep.build_recursive_graph(graph);
-            graph.addEdge(top, child, None);
+            graph.add_edge(top, child, None);
         }
         top
     }

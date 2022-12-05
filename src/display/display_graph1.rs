@@ -1,9 +1,8 @@
-use crate::utils::graph::*;
+
 use egui::{
-    emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
-    Vec2,
+    emath::RectTransform, epaint::CubicBezierShape, Color32, 
+    Painter, Pos2, Rect, Sense, Stroke, Vec2,
 };
-use std::collections::BTreeMap;
 
 const ARROW_TIP_LENGHT: f32 = 10.;
 const ARROW_WIDTH: f32 = 3.;
@@ -12,18 +11,11 @@ const COLOR_NODES: Color32 = Color32::WHITE;
 const COLOR_LABEL_EDGE: Color32 = Color32::GRAY;
 const COLOR_LABEL_NODE: Color32 = Color32::BLACK;
 
-// edge type
-pub enum EdgeType {
-    SelfLoop,
-    Directed,
-    Colliding,
-}
-
-struct DisplayGraph {
-    graph: Graph,
-    nodes_pos: BTreeMap<IndNode, Pos2>,
-    edges_type: BTreeMap<IndEdge, EdgeType>,
-    explorer_order: Vec<Vec<IndNode>>,
+pub struct DisplayGraph {
+    edges: Vec<(usize, usize, Option<String>)>,
+    nodes: Vec<String>,
+    nodes_pos: Vec<Pos2>,
+    nodes_bfs: Vec<Vec<usize>>,
     last_parameter: DisplayGraphParameter,
 }
 
@@ -32,7 +24,6 @@ pub struct DisplayGraphParameter {
     pub padding_x: f32,
     pub padding_y: f32,
     pub node_size: f32,
-    // we can add more parameters here as we need them or like the
 }
 
 impl DisplayGraphParameter {
@@ -45,35 +36,30 @@ impl DisplayGraphParameter {
     }
 }
 
-impl From<Graph> for DisplayGraph {
-    fn from(graph: Graph) -> Self {
+impl DisplayGraph {
+    pub fn new(
+        edges: Vec<(usize, usize, Option<String>)>,
+        nodes: Vec<String>,
+        nodes_bfs: Vec<Vec<usize>>,
+    ) -> Self {
         Self {
-            graph,
-            nodes_pos: graph
-                .get_nodes_ids()
-                .into_iter()
-                .map(|node_id| (node_id, Pos2::new(0., 0.)))
-                .collect(),
-            edges_type: graph
-                .get_edges_ids()
-                .into_iter()
-                .map(|edge_id| (edge_id, EdgeType::Directed))
-                .collect(),
-            explorer_order: graph.bfs(graph.start_node),
+            edges: edges,
+            nodes_pos: vec![Pos2 { x: 0., y: 1. }; nodes.len()],
+            nodes: nodes,
+            nodes_bfs: nodes_bfs,
             last_parameter: DisplayGraphParameter::invalid(),
         }
     }
-}
 
-impl DisplayGraph {
-    fn calculate_nodes_position(&mut self, bfs_max_width: f32) {
+
+    fn calculate_each_node_position(&mut self, bfs_max_width: f32) {
         let params = self.last_parameter;
         let width_painting_area =
             bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
 
-        for (current_bfs_depth, nodes_level) in self.explorer_order.iter().enumerate() {
+        for (current_bfs_depth, nodes_level) in self.nodes_bfs.iter().enumerate() {
             for (index, node) in nodes_level.iter().enumerate() {
-                self.nodes_pos[node] = Pos2 {
+                self.nodes_pos[*node] = Pos2 {
                     x: (index as f32 + 1.)
                         * (width_painting_area / (nodes_level.len() as f32 + 1.)),
                     y: (current_bfs_depth as f32) * (params.node_size + params.padding_y),
@@ -84,17 +70,17 @@ impl DisplayGraph {
 
     pub fn position(&mut self, params: DisplayGraphParameter) -> Vec2 {
         let bfs_max_width = self
-            .explorer_order
+            .nodes_bfs
             .iter()
             .map(|nodes| nodes.len())
             .max()
             .unwrap_or(0) as f32;
 
-        let bfs_depth = self.explorer_order.len();
+        let bfs_depth = self.nodes_bfs.len();
         // check if the graph has to be re-positioned (only if the params change)
         if params != self.last_parameter {
             self.last_parameter = params;
-            self.calculate_nodes_position(bfs_max_width);
+            self.calculate_each_node_position(bfs_max_width);
         }
         let width_painting_area =
             bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
@@ -112,7 +98,7 @@ impl DisplayGraph {
         ui: &egui::Ui,
         response: &mut egui::Response,
     ) {
-        for (index, current_pos) in self.nodes_pos.iter_mut() {
+        for (index, current_pos) in self.nodes_pos.iter_mut().enumerate() {
             let screen_pos = to_screen.transform_pos(*current_pos);
             let size = self.last_parameter.node_size / 2.;
             let point_rect = Rect::from_center_size(screen_pos, Vec2 { x: size, y: size });
@@ -138,6 +124,7 @@ impl DisplayGraph {
 
     fn draw_edge(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
         for (from, to, _) in &self.edges {
+
             if from == to {
                 let origin = self.nodes_pos[*from];
                 let rotation = egui::emath::Rot2::from_angle(std::f32::consts::PI / 8.);
@@ -181,13 +168,14 @@ impl DisplayGraph {
 
         for (from, to, label) in &self.edges {
             if let Some(label) = label {
+
                 if *to == *from {
                     let origin = self.nodes_pos[*from];
-
+                
                     let direction_vec =
                         Vec2::new(self.last_parameter.node_size, self.last_parameter.node_size);
                     painter.text(
-                        to_screen.transform_pos(origin + direction_vec),
+                        to_screen.transform_pos(origin+direction_vec),
                         egui::Align2::CENTER_CENTER,
                         label.to_string(),
                         egui::TextStyle::Body.resolve(ui.style()),
@@ -221,22 +209,22 @@ impl DisplayGraph {
     }
 
     fn draw_nodes(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
-        use egui::{Align2, TextStyle::Body};
+        for (index, node) in self.nodes.iter().enumerate() {
+            let pos = to_screen.transform_pos(self.nodes_pos[index]);
 
-        for (index, pos) in self.nodes_pos.iter() {
-            let pos = to_screen.transform_pos(*pos);
+            painter.circle_filled(
+                pos,
+                self.last_parameter.node_size / 2.,
+                COLOR_NODES,
+            );
 
-            painter.circle_filled(pos, self.last_parameter.node_size / 2., COLOR_NODES);
-
-            if let Some(label) = self.graph.get_node_label(*index) {
-                painter.text(
-                    pos,
-                    Align2::CENTER_CENTER,
-                    label,
-                    Body.resolve(ui.style()),
-                    COLOR_LABEL_NODE,
-                );
-            }
+            painter.text(
+                pos,
+                egui::Align2::CENTER_CENTER,
+                node.clone(),
+                egui::TextStyle::Body.resolve(ui.style()),
+                COLOR_LABEL_NODE,
+            );
         }
     }
 
