@@ -38,6 +38,9 @@ impl Graph {
         }
     }
 
+    pub fn get_edge(&self, id: IndEdge) -> &Edge {
+        &self.edges[id]
+    }
     pub fn get_edges_ids(&self) -> Vec<IndEdge> {
         self.edges.iter().map(|edge| edge.id).collect()
     }

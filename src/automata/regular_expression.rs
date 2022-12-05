@@ -78,38 +78,6 @@ impl Into<Graph> for ReOperator {
         g
     }
 }
-impl Into<DisplayGraph> for ReOperator {
-    fn into(self) -> DisplayGraph {
-        let mut child = vec![];
-        let mut graph = vec![];
-        let mut labels = vec![];
-        let mut edge: Vec<(usize, usize, Option<String>)> = Vec::new();
-        let mut number_nodes = 1 as usize;
-
-        graph.push(vec![0 as usize]);
-        child.push((0, &self));
-
-        while !child.is_empty() {
-            let mut current_nodes = vec![];
-            let mut newchild = vec![];
-
-            for (index, node) in child {
-                current_nodes.push(index);
-                labels.push(node.label());
-
-                for child in node.childs() {
-                    edge.push((index, number_nodes, None));
-                    newchild.push((number_nodes, child));
-                    number_nodes += 1;
-                }
-            }
-            graph.push(current_nodes);
-            child = newchild;
-        }
-
-        DisplayGraph::new(edge, labels, graph)
-    }
-}
 
 /// parse until closing parens or end of string
 /// concatenation is left associative

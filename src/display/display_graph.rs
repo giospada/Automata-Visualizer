@@ -14,12 +14,12 @@ const COLOR_LABEL_NODE: Color32 = Color32::BLACK;
 
 // edge type
 pub enum EdgeType {
-    SelfLoop,
-    Directed,
-    Colliding,
+    SELFLOOP,
+    DIRECTED,
+    COLLIDING,
 }
 
-struct DisplayGraph {
+pub struct DisplayGraph {
     graph: Graph,
     nodes_pos: BTreeMap<IndNode, Pos2>,
     edges_type: BTreeMap<IndEdge, EdgeType>,
@@ -47,21 +47,26 @@ impl DisplayGraphParameter {
 
 impl From<Graph> for DisplayGraph {
     fn from(graph: Graph) -> Self {
-        Self {
+        let nodes_pos = graph
+            .get_nodes_ids()
+            .into_iter()
+            .map(|node_id| (node_id, Pos2::new(0., 0.)))
+            .collect();
+        let edges_type = graph
+            .get_edges_ids()
+            .into_iter()
+            .map(|edge_id| (edge_id, EdgeType::DIRECTED))
+            .collect();
+        let explorer_order = graph.bfs(graph.start_node);
+        let mut self_struct = Self {
             graph,
-            nodes_pos: graph
-                .get_nodes_ids()
-                .into_iter()
-                .map(|node_id| (node_id, Pos2::new(0., 0.)))
-                .collect(),
-            edges_type: graph
-                .get_edges_ids()
-                .into_iter()
-                .map(|edge_id| (edge_id, EdgeType::Directed))
-                .collect(),
-            explorer_order: graph.bfs(graph.start_node),
+            nodes_pos,
+            edges_type,
+            explorer_order,
             last_parameter: DisplayGraphParameter::invalid(),
-        }
+        };
+        self_struct.process_edges();
+        self_struct
     }
 }
 
@@ -73,7 +78,7 @@ impl DisplayGraph {
 
         for (current_bfs_depth, nodes_level) in self.explorer_order.iter().enumerate() {
             for (index, node) in nodes_level.iter().enumerate() {
-                self.nodes_pos[node] = Pos2 {
+                *self.nodes_pos.get_mut(node).unwrap() = Pos2 {
                     x: (index as f32 + 1.)
                         * (width_painting_area / (nodes_level.len() as f32 + 1.)),
                     y: (current_bfs_depth as f32) * (params.node_size + params.padding_y),
@@ -135,87 +140,140 @@ impl DisplayGraph {
         painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
         painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
     }
+    fn draw_arrow_bezier(painter: &Painter, positions: [Pos2; 3], stroke: Stroke) {
+        use egui::emath::*;
+        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
+        let tip_length = ARROW_TIP_LENGHT;
+        let [origin, middle, end] = positions;
+        let tip = end;
+        let dir = (middle - end).normalized();
 
-    fn draw_edge(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
-        for (from, to, _) in &self.edges {
-            if from == to {
-                let origin = self.nodes_pos[*from];
-                let rotation = egui::emath::Rot2::from_angle(std::f32::consts::PI / 8.);
+        painter.line_segment([origin, tip], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
+    }
 
-                let direction_vec =
-                    Vec2::new(self.last_parameter.node_size, self.last_parameter.node_size);
-                let mut points = [
-                    origin,
-                    origin + rotation.inverse() * direction_vec,
-                    origin + rotation * direction_vec,
-                    origin,
-                ];
-                for pos in &mut points {
-                    *pos = to_screen.transform_pos(*pos);
-                }
-                painter.add(CubicBezierShape::from_points_stroke(
-                    points,
-                    false,
-                    Color32::TRANSPARENT,
-                    Stroke::new(ARROW_WIDTH, COLOR_EDGE),
-                ));
-            } else {
-                let origin = to_screen.transform_pos(self.nodes_pos[*from]);
-                let end = to_screen.transform_pos(self.nodes_pos[*to]);
-                let displacement_vec = (end - origin.to_vec2()).to_vec2();
+    fn draw_edge_and_get_label_pos(
+        &self,
+        painter: &egui::Painter,
+        to_screen: RectTransform,
+        ui: &egui::Ui,
+        (ind, edge_type): (&IndEdge, &EdgeType),
+    ) -> Option<(Pos2, &String)> {
+        let mut label_pos = Pos2::new(0., 0.);
+        let Edge {
+            id: _,
+            from,
+            to,
+            label,
+        } = self.graph.get_edge(*ind);
+        let origin = self.nodes_pos[to];
 
-                let node_radius = Pos2 {
-                    x: self.last_parameter.node_size / 2.,
-                    y: self.last_parameter.node_size / 2.,
-                };
-                let node_radius_vec = displacement_vec.normalized() * node_radius.to_vec2();
+        let rotation90 = egui::emath::Rot2::from_angle(std::f32::consts::PI / 8.);
+        if let EdgeType::SELFLOOP = edge_type {
+            let direction_vec =
+                Vec2::new(self.last_parameter.node_size, self.last_parameter.node_size);
+            let mut points = [
+                origin,
+                origin + rotation90.inverse() * direction_vec,
+                origin + rotation90 * direction_vec,
+                origin,
+            ];
+            for pos in &mut points {
+                *pos = to_screen.transform_pos(*pos);
+            }
+            label_pos = origin + direction_vec;
+            painter.add(CubicBezierShape::from_points_stroke(
+                points,
+                false,
+                Color32::TRANSPARENT,
+                Stroke::new(ARROW_WIDTH, COLOR_EDGE),
+            ));
+        } else {
+            let end = self.nodes_pos[to];
+            let displacement_vec = (end - origin.to_vec2()).to_vec2();
+
+            let node_radius = Pos2 {
+                x: self.last_parameter.node_size / 2.,
+                y: self.last_parameter.node_size / 2.,
+            };
+            let node_radius_vec = displacement_vec.normalized() * node_radius.to_vec2();
+
+            if let EdgeType::DIRECTED = edge_type {
+                let final_pos = origin + node_radius_vec;
+                label_pos = (displacement_vec / 2.).to_pos2();
 
                 Self::draw_arrow(
                     painter,
                     origin + node_radius_vec,
-                    displacement_vec - node_radius_vec * 2.,
+                    displacement_vec - node_radius_vec / 2.,
+                    Stroke::new(ARROW_WIDTH, COLOR_EDGE),
+                );
+            } else if let EdgeType::DIRECTED = edge_type {
+                let origin = origin + node_radius_vec;
+                let end = end - node_radius_vec;
+                let middle = (displacement_vec + rotation90 * node_radius_vec).to_pos2();
+
+                label_pos = middle;
+                Self::draw_arrow_bezier(
+                    painter,
+                    [
+                        to_screen.transform_pos(origin),
+                        to_screen.transform_pos(middle),
+                        to_screen.transform_pos(end),
+                    ],
                     Stroke::new(ARROW_WIDTH, COLOR_EDGE),
                 );
             }
         }
+        if let Some(label_val) = label {
+            Some((label_pos, label_val))
+        } else {
+            None
+        }
+    }
 
-        for (from, to, label) in &self.edges {
-            if let Some(label) = label {
-                if *to == *from {
-                    let origin = self.nodes_pos[*from];
+    fn draw_edge(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
+        use std::collections::VecDeque;
+        let mut labels = VecDeque::new();
+        for edge in self.edges_type.iter() {
+            if let Some(val) = self.draw_edge_and_get_label_pos(painter, to_screen, ui, edge) {
+                labels.push_back(val);
+            }
+        }
+        for (pos, label) in labels.into_iter() {
+            painter.text(
+                to_screen.transform_pos(pos),
+                egui::Align2::CENTER_CENTER,
+                label,
+                egui::TextStyle::Body.resolve(ui.style()),
+                COLOR_LABEL_EDGE,
+            );
+        }
+    }
 
-                    let direction_vec =
-                        Vec2::new(self.last_parameter.node_size, self.last_parameter.node_size);
-                    painter.text(
-                        to_screen.transform_pos(origin + direction_vec),
-                        egui::Align2::CENTER_CENTER,
-                        label.to_string(),
-                        egui::TextStyle::Body.resolve(ui.style()),
-                        COLOR_LABEL_EDGE,
-                    );
-                } else {
-                    let displacement_vec =
-                        (self.nodes_pos[*to] - self.nodes_pos[*from].to_vec2()).to_vec2();
-                    let middle_point = self.nodes_pos[*from] + displacement_vec / 2.;
+    fn process_edges(&mut self) {
+        let get_from_to = |id| {
+            let to = self.graph.get_edge(id).from;
+            let from = self.graph.get_edge(id).to;
+            (from, to)
+        };
+        let mut all_edge: Vec<(IndNode, IndNode)> = self
+            .edges_type
+            .iter()
+            .map(|(ind, _)| get_from_to(*ind))
+            .collect();
 
-                    let displacement_dir = displacement_vec.normalized();
-                    let rotation = egui::emath::Rot2::from_angle(std::f32::consts::PI / 2.);
-                    let padding_from_arrow: f32 = 5.;
+        all_edge.sort();
 
-                    // label is drawed perpendicularly to the arrow, from middle point and little displacement,
-                    // at padding_from_arrow distance from the arrow
-                    let pos = middle_point - displacement_dir * 5.;
-                    let pos = pos - padding_from_arrow * (rotation * displacement_dir);
-                    let pos = to_screen.transform_pos(pos);
-
-                    painter.text(
-                        pos,
-                        egui::Align2::CENTER_CENTER,
-                        label.to_string(),
-                        egui::TextStyle::Body.resolve(ui.style()),
-                        COLOR_LABEL_EDGE,
-                    );
-                }
+        for (id, edge_type) in self.edges_type.iter_mut() {
+            let (from, to) = get_from_to(*id);
+            if from == to {
+                *edge_type = EdgeType::SELFLOOP;
+            } else if all_edge.binary_search(&(to, from)).is_ok() {
+                *edge_type = EdgeType::COLLIDING;
+            } else {
+                *edge_type = EdgeType::DIRECTED;
             }
         }
     }

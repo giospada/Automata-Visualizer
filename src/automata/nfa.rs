@@ -254,47 +254,6 @@ impl Into<Graph> for NFA {
     }
 }
 
-impl Into<DisplayGraph> for NFA {
-    fn into(self) -> DisplayGraph {
-        let mut done = vec![false; self.num_states];
-        let mut child = vec![];
-        let mut graph = vec![];
-        let mut labels = vec![];
-        let mut edge: Vec<(usize, usize, Option<String>)> = Vec::new();
-        graph.push(vec![self.start_state as usize]);
-        child.push(self.start_state);
-        done[self.start_state] = true;
-        info!("to NFA");
-        info!("NFA: {:?}", self);
-        while !child.is_empty() {
-            info!("child {:?}", child);
-            let mut current_nodes = vec![];
-            let mut newchild = vec![];
-            for index in child {
-                current_nodes.push(index);
-                labels.push(index.to_string());
-
-                for i in self.transitions[index].keys() {
-                    for j in &self.transitions[index][i] {
-                        edge.push((index, *j, Some(format!("{}", *i))));
-                        if !done[*j] {
-                            done[*j] = true;
-                            newchild.push(*j);
-                        }
-                    }
-                }
-            }
-            graph.push(current_nodes);
-            child = newchild;
-        }
-        labels[self.start_state] = format!("s:{}", labels[self.start_state]);
-        for end_state in &self.end_states {
-            labels[*end_state] = format!("e:{}", labels[*end_state]);
-        }
-        DisplayGraph::new(edge, labels, graph)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
