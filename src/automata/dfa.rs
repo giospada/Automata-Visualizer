@@ -22,7 +22,7 @@ pub struct DFA<T> {
 
 const INVALID_STATE: i32 = -1;
 
-impl<T: Clone> DFA<T> {
+impl<T> DFA<T> {
     fn new() -> Self {
         Self {
             num_states: 0,
@@ -63,7 +63,7 @@ impl<T: Clone> DFA<T> {
             end_states,
             transitions,
             alphabet,
-            idx_to_nfa_states: None,
+            idx_to_data: None,
         }
     }
 
@@ -219,10 +219,10 @@ impl<T: Clone> DFA<T> {
         dfa.transitions.push(BTreeMap::new());
             
         if let Some(map) = &mut dfa.idx_to_data {
-            map.insert(dfa.num_states, states.clone());
+            map.insert(dfa.num_states, states);
         } else {
             dfa.idx_to_data = Some(BTreeMap::new());
-            dfa.idx_to_data.as_mut().unwrap().insert(dfa.num_states, states.clone());
+            dfa.idx_to_data.as_mut().unwrap().insert(dfa.num_states, states);
         }
         
         dfa.num_states += 1; 

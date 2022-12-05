@@ -418,8 +418,8 @@ impl Grammar {
     }
 }
 
-impl From<&DFA> for Grammar {
-    fn from(dfa: &DFA) -> Self {
+impl<T> From<&DFA<T>> for Grammar {
+    fn from(dfa: &DFA<T>) -> Self {
         // NOTE: the fact that i assume non terminal is usize, makes the grammar and DFA
         // internal representation tightly coupled, but this implementation is much simpler
 
@@ -508,7 +508,7 @@ mod test {
     #[test]
     fn test_dfa_conversion() {
         // this dfa should recognize ba*
-        let dfa = DFA::from_state(
+        let dfa: DFA<usize> = DFA::from_state(
             3,
             0, 
             vec![1], 
