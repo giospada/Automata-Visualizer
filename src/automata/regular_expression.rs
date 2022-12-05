@@ -262,10 +262,6 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
 /// when it's at b it returns a correct box operator with label * and b as child
 /// 
 fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
-    if chars.next().is_none() {
-        return Err(Box::new(InvalidTokenError::new("Empty chars for next node".to_string())));
-    }
-
     let curr_char = chars.next().unwrap();
     if !is_valid_char(curr_char) {
         return Err(Box::new(InvalidCharacter::new(curr_char)));
