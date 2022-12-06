@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::automata::nfa::NFA;
 use crate::automata::regular_expression as RE;
-use crate::display::display_graph::DisplayGraph;
-use crate::utils::graph::Graph;
+use crate::utils::graph::{Graph, IndEdge, IndNode};
 use crate::utils::DisjointUnionFind::DisjointUnionFind;
 
 #[derive(Debug, Clone)]
@@ -256,15 +255,21 @@ impl Into<Graph> for DFA {
 
         let translate_table = (0..self.num_states)
             .map(|node| (node, g.add_node(Some(get_label(node)))))
-            .collect::<BTreeMap<usize, usize>>();
+            .collect::<BTreeMap<usize, IndNode>>();
 
         self.transitions.iter().enumerate().for_each(|(from, adj)| {
+            let mut set: BTreeMap<IndNode, IndEdge> = BTreeMap::new();
             adj.iter().for_each(|(label, to)| {
-                g.add_edge(
+                let ind = set.entry(*to).or_insert(g.add_edge(
                     translate_table[&from],
                     translate_table[to],
-                    Some(format!("{}", label)),
-                );
+                    None,
+                ));
+                let old_label = g.modify_edge_label(*ind);
+                *old_label = match old_label {
+                    Some(val) => Some(format!("{},{}", val, label)),
+                    None => Some(format!("{}", label)),
+                }
             })
         });
         let _start_node = translate_table[&self.start_state];

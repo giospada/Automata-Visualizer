@@ -1,4 +1,5 @@
 use crate::utils::graph::*;
+use eframe::epaint::QuadraticBezierShape;
 use egui::{
     emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
     Vec2,
@@ -81,7 +82,8 @@ impl DisplayGraph {
                 *self.nodes_pos.get_mut(node).unwrap() = Pos2 {
                     x: (index as f32 + 1.)
                         * (width_painting_area / (nodes_level.len() as f32 + 1.)),
-                    y: (current_bfs_depth as f32) * (params.node_size + params.padding_y),
+                    y: (current_bfs_depth as f32) * (params.node_size + params.padding_y)
+                        + params.padding_y,
                 };
             }
         }
@@ -103,7 +105,8 @@ impl DisplayGraph {
         }
         let width_painting_area =
             bfs_max_width as f32 * (params.node_size + params.padding_x) + params.padding_x;
-        let height_painting_area = bfs_depth as f32 * (params.node_size + params.padding_y);
+        let height_painting_area =
+            bfs_depth as f32 * (params.node_size + params.padding_y) + params.padding_y;
 
         Vec2 {
             x: width_painting_area,
@@ -129,6 +132,21 @@ impl DisplayGraph {
         }
     }
 
+    // dist should be 0<=dist<=1
+    fn calc_quadratic_bezier_curves(pos: [Pos2; 3], dist: f32) -> Pos2 {
+        let dist = if dist < 0. {
+            0.
+        } else if dist > 1. {
+            1.
+        } else {
+            dist
+        };
+        (dist.powf(2.) * pos[0].to_vec2()
+            + 2. * (1. - dist) * dist * pos[1].to_vec2()
+            + (1. - dist).powf(2.) * pos[2].to_vec2())
+        .to_pos2()
+    }
+
     fn draw_arrow(painter: &Painter, origin: Pos2, vec: Vec2, stroke: Stroke) {
         use egui::emath::*;
         let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
@@ -140,17 +158,24 @@ impl DisplayGraph {
         painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
         painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
     }
+
     fn draw_arrow_bezier(painter: &Painter, positions: [Pos2; 3], stroke: Stroke) {
         use egui::emath::*;
         let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
         let tip_length = ARROW_TIP_LENGHT;
         let [origin, middle, end] = positions;
         let tip = end;
-        let dir = (middle - end).normalized();
+        let dir = tip_length / (end - origin.to_vec2()).to_vec2().length();
+        let dir = (Self::calc_quadratic_bezier_curves(positions, dir) - end).normalized();
+        painter.add(QuadraticBezierShape::from_points_stroke(
+            positions,
+            false,
+            Color32::TRANSPARENT,
+            Stroke::new(ARROW_WIDTH, COLOR_EDGE),
+        ));
 
-        painter.line_segment([origin, tip], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
+        painter.line_segment([tip, tip + tip_length * (rot * dir)], stroke);
+        painter.line_segment([tip, tip + tip_length * (rot.inverse() * dir)], stroke);
     }
 
     fn draw_edge_and_get_label_pos(
@@ -167,54 +192,60 @@ impl DisplayGraph {
             to,
             label,
         } = self.graph.get_edge(*ind);
-        let origin = self.nodes_pos[to];
-
         let rotation90 = egui::emath::Rot2::from_angle(std::f32::consts::PI / 8.);
-        if let EdgeType::SELFLOOP = edge_type {
-            let direction_vec =
-                Vec2::new(self.last_parameter.node_size, self.last_parameter.node_size);
-            let mut points = [
-                origin,
-                origin + rotation90.inverse() * direction_vec,
-                origin + rotation90 * direction_vec,
-                origin,
-            ];
-            for pos in &mut points {
-                *pos = to_screen.transform_pos(*pos);
+        let rotation180 = egui::emath::Rot2::from_angle(std::f32::consts::PI / 2.);
+        let origin = self.nodes_pos[from];
+
+        let end = self.nodes_pos[to];
+        let displacement_vec = (end - origin.to_vec2()).to_vec2();
+
+        let node_radius_vec = Vec2 {
+            x: self.last_parameter.node_size / 2.,
+            y: self.last_parameter.node_size / 2.,
+        };
+        match edge_type {
+            EdgeType::SELFLOOP => {
+                let mut points = [
+                    origin,
+                    origin + rotation90.inverse() * node_radius_vec * 2.,
+                    origin + rotation90 * node_radius_vec * 2.,
+                    origin,
+                ];
+                label_pos = origin + node_radius_vec * 2.;
+                for pos in &mut points {
+                    *pos = to_screen.transform_pos(*pos);
+                }
+                painter.add(CubicBezierShape::from_points_stroke(
+                    points,
+                    false,
+                    Color32::TRANSPARENT,
+                    Stroke::new(ARROW_WIDTH, COLOR_EDGE),
+                ));
             }
-            label_pos = origin + direction_vec;
-            painter.add(CubicBezierShape::from_points_stroke(
-                points,
-                false,
-                Color32::TRANSPARENT,
-                Stroke::new(ARROW_WIDTH, COLOR_EDGE),
-            ));
-        } else {
-            let end = self.nodes_pos[to];
-            let displacement_vec = (end - origin.to_vec2()).to_vec2();
-
-            let node_radius = Pos2 {
-                x: self.last_parameter.node_size / 2.,
-                y: self.last_parameter.node_size / 2.,
-            };
-            let node_radius_vec = displacement_vec.normalized() * node_radius.to_vec2();
-
-            if let EdgeType::DIRECTED = edge_type {
-                let final_pos = origin + node_radius_vec;
-                label_pos = (displacement_vec / 2.).to_pos2();
+            EdgeType::DIRECTED => {
+                let node_radius_vec = node_radius_vec * displacement_vec.normalized();
+                let origin = origin + node_radius_vec;
+                let displacement_vec = displacement_vec - node_radius_vec * 2.;
+                label_pos = origin + displacement_vec / 2.;
 
                 Self::draw_arrow(
                     painter,
-                    origin + node_radius_vec,
-                    displacement_vec - node_radius_vec / 2.,
+                    to_screen.transform_pos(origin),
+                    displacement_vec,
                     Stroke::new(ARROW_WIDTH, COLOR_EDGE),
                 );
-            } else if let EdgeType::DIRECTED = edge_type {
+            }
+            EdgeType::COLLIDING => {
+                let node_radius_vec = node_radius_vec * displacement_vec.normalized();
+
                 let origin = origin + node_radius_vec;
                 let end = end - node_radius_vec;
-                let middle = (displacement_vec + rotation90 * node_radius_vec).to_pos2();
+                let displacement_vec = displacement_vec - node_radius_vec * 2.;
 
-                label_pos = middle;
+                let middle = (origin + (displacement_vec / 2.))
+                    + self.last_parameter.node_size * (rotation180 * displacement_vec.normalized());
+
+                label_pos = Self::calc_quadratic_bezier_curves([origin, middle, end], 0.5);
                 Self::draw_arrow_bezier(
                     painter,
                     [

@@ -38,6 +38,10 @@ impl Graph {
         }
     }
 
+    pub fn modify_edge_label(&mut self, edge_ind: IndEdge) -> &mut Option<String> {
+        &mut self.edges[edge_ind].label
+    }
+
     pub fn get_edge(&self, id: IndEdge) -> &Edge {
         &self.edges[id]
     }

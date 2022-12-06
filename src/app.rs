@@ -4,7 +4,7 @@ use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
 use crate::automata::dfa::DFA;
 use crate::automata::nfa::NFA;
 use crate::automata::regular_expression::ReOperator;
-use crate::display::display_graph::{DisplayGraph, DisplayGraphParameter};
+use crate::display::display_graph::DisplayGraphParameter;
 use crate::display::visualizer::Visualizer;
 use crate::utils::graph::Graph;
 
