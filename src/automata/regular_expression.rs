@@ -282,26 +282,7 @@ fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn
     }
 }
 
-fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>> {
-    let mut token = String::new();
 
-    while chars.peek().is_some()
-        && chars.peek().unwrap() != &'|'
-        && chars.peek().unwrap() != &')'
-        && chars.peek().unwrap() != &'('
-    {
-        let ch = chars.next().unwrap();
-
-        if !is_valid_char(ch) {
-            return Err(Box::new(InvalidTokenError::new(
-                "Invalid character in token".to_string(),
-            )));
-        }
-        token.push(ch);
-    }
-
-    Ok(token)
-}
 
 fn is_valid_char(c: char) -> bool {
     c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
