@@ -33,7 +33,7 @@ pub struct DisplayGraphParameter {
     pub padding_x: f32,
     pub padding_y: f32,
     pub node_size: f32,
-    // we can add more parameters here as we need them or like the
+    // we can add more parameters here as we need them or like the color of node edge etc..
 }
 
 impl DisplayGraphParameter {
@@ -58,7 +58,7 @@ impl From<Graph> for DisplayGraph {
             .into_iter()
             .map(|edge_id| (edge_id, EdgeType::DIRECTED))
             .collect();
-        let explorer_order = graph.bfs(graph.start_node);
+        let explorer_order = graph.bfs_order(graph.start_node);
         let mut self_struct = Self {
             graph,
             nodes_pos,
@@ -66,7 +66,7 @@ impl From<Graph> for DisplayGraph {
             explorer_order,
             last_parameter: DisplayGraphParameter::invalid(),
         };
-        self_struct.process_edges();
+        self_struct.set_edge_type();
         self_struct
     }
 }
@@ -283,22 +283,23 @@ impl DisplayGraph {
         }
     }
 
-    fn process_edges(&mut self) {
-        let get_from_to = |id| {
-            let to = self.graph.get_edge(id).from;
-            let from = self.graph.get_edge(id).to;
+    // this function set the edge type based on how should be printed:
+    fn set_edge_type(&mut self) {
+        let get_edge_from_to_val = |id| {
+            let from = self.graph.get_edge(id).from;
+            let to = self.graph.get_edge(id).to;
             (from, to)
         };
         let mut all_edge: Vec<(IndNode, IndNode)> = self
             .edges_type
             .iter()
-            .map(|(ind, _)| get_from_to(*ind))
+            .map(|(ind, _)| get_edge_from_to_val(*ind))
             .collect();
 
         all_edge.sort();
 
         for (id, edge_type) in self.edges_type.iter_mut() {
-            let (from, to) = get_from_to(*id);
+            let (from, to) = get_edge_from_to_val(*id);
             if from == to {
                 *edge_type = EdgeType::SELFLOOP;
             } else if all_edge.binary_search(&(to, from)).is_ok() {

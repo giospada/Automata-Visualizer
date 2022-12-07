@@ -87,7 +87,7 @@ impl Graph {
         id
     }
 
-    pub fn bfs(&self, mut start_node: Option<IndNode>) -> Vec<Vec<IndNode>> {
+    pub fn bfs_order(&self, mut start_node: Option<IndNode>) -> Vec<Vec<IndNode>> {
         //store all index
         let mut set: BTreeSet<IndNode> = (0..self.nodes.len()).into_iter().collect();
         let mut bfs_exploring_order = vec![];
@@ -168,6 +168,9 @@ mod test {
         g.add_edge(s, other[1], None);
         g.add_edge(other[0], other[2], None);
 
-        assert_eq!(vec![vec![0], vec![1, 2], vec![3], vec![4]], g.bfs(Some(s)));
+        assert_eq!(
+            vec![vec![0], vec![1, 2], vec![3], vec![4]],
+            g.bfs_order(Some(s))
+        );
     }
 }

@@ -35,8 +35,8 @@ impl DFA {
     /// if alphabet is None, the alphabet is inferred from the transitions.
     pub fn from_state(
         num_states: usize,
-        start_state: usize, 
-        end_states: Vec<usize>, 
+        start_state: usize,
+        end_states: Vec<usize>,
         transitions: Vec<BTreeMap<char, usize>>,
         alphabet: Option<Vec<char>>,
     ) -> Self {
@@ -280,7 +280,7 @@ impl From<&RE::ReOperator> for DFA {
 
 impl Into<Graph> for DFA {
     fn into(self) -> Graph {
-        let mut g = Graph::new();
+        let mut graph = Graph::new();
 
         let finals_nodes = self
             .end_states
@@ -297,20 +297,22 @@ impl Into<Graph> for DFA {
                 format!("{}", node)
             }
         };
-
+        // map the node_id in the dfa to the node id in the graph
         let translate_table = (0..self.num_states)
-            .map(|node| (node, g.add_node(Some(get_label(node)))))
+            .map(|node| (node, graph.add_node(Some(get_label(node)))))
             .collect::<BTreeMap<usize, IndNode>>();
 
         self.transitions.iter().enumerate().for_each(|(from, adj)| {
-            let mut set: BTreeMap<IndNode, IndEdge> = BTreeMap::new();
+            // we compact all edge that go to the same node
+            // and we upate the label for all the node added
+            let mut added_edge: BTreeMap<IndNode, IndEdge> = BTreeMap::new();
             adj.iter().for_each(|(label, to)| {
-                let ind = set.entry(*to).or_insert(g.add_edge(
+                let ind = added_edge.entry(*to).or_insert(graph.add_edge(
                     translate_table[&from],
                     translate_table[to],
                     None,
                 ));
-                let old_label = g.modify_edge_label(*ind);
+                let old_label = graph.modify_edge_label(*ind);
                 *old_label = match old_label {
                     Some(val) => Some(format!("{},{}", val, label)),
                     None => Some(format!("{}", label)),
@@ -318,6 +320,6 @@ impl Into<Graph> for DFA {
             })
         });
         let _start_node = translate_table[&self.start_state];
-        g
+        graph
     }
 }

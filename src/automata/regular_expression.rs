@@ -73,9 +73,9 @@ impl ReOperator {
 
 impl Into<Graph> for ReOperator {
     fn into(self) -> Graph {
-        let mut g = Graph::new();
-        self.build_recursive_graph(&mut g);
-        g
+        let mut graph= Graph::new();
+        self.build_recursive_graph(&mut graph);
+        graph
     }
 }
 

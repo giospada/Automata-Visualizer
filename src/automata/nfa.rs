@@ -215,7 +215,7 @@ impl From<&RE::ReOperator> for NFA {
 
 impl Into<Graph> for NFA {
     fn into(self) -> Graph {
-        let mut g = Graph::new();
+        let mut graph = Graph::new();
 
         let finals_nodes = self
             .end_states
@@ -234,13 +234,13 @@ impl Into<Graph> for NFA {
         };
 
         let translate_table = (0..self.num_states)
-            .map(|node| (node, g.add_node(Some(get_label(node)))))
+            .map(|node| (node, graph.add_node(Some(get_label(node)))))
             .collect::<BTreeMap<usize, usize>>();
 
         self.transitions.iter().enumerate().for_each(|(from, adj)| {
             adj.iter().for_each(|(label, to_list)| {
                 to_list.iter().for_each(|to| {
-                    g.add_edge(
+                    graph.add_edge(
                         translate_table[&from],
                         translate_table[to],
                         Some(format!("{}", label)),
@@ -250,7 +250,7 @@ impl Into<Graph> for NFA {
         });
         let _start_node = translate_table[&self.start_state];
         // TODO: attenzione a quellli che vanno nello stesso nodo
-        g
+        graph
     }
 }
 
