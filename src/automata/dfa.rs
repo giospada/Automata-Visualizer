@@ -5,8 +5,10 @@ use crate::automata::regular_expression as RE;
 use crate::utils::graph::{Graph, IndEdge, IndNode};
 use crate::utils::DisjointUnionFind::DisjointUnionFind;
 
+type NfaStates = BTreeSet<usize>;
+
 #[derive(Debug, Clone)]
-pub struct DFA {
+pub struct DFA<T> {
     num_states: usize,
     start_state: usize,
     end_states: Vec<usize>,
@@ -14,12 +16,12 @@ pub struct DFA {
     alphabet: Vec<char>,
 
     // TODO: use this in visualization
-    idx_to_nfa_states: Option<BTreeMap<usize, BTreeSet<usize>>>,
+    idx_to_data: Option<BTreeMap<usize, T>>,
 }
 
 const INVALID_STATE: i32 = -1;
 
-impl DFA {
+impl<T> DFA<T> {
     fn new() -> Self {
         Self {
             num_states: 0,
@@ -27,7 +29,7 @@ impl DFA {
             end_states: Vec::new(),
             transitions: Vec::new(),
             alphabet: Vec::new(),
-            idx_to_nfa_states: None,
+            idx_to_data: None,
         }
     }
 
@@ -60,7 +62,7 @@ impl DFA {
             end_states,
             transitions,
             alphabet,
-            idx_to_nfa_states: None,
+            idx_to_data: None,
         }
     }
 
@@ -120,7 +122,7 @@ impl DFA {
             end_states: new_end_states,
             transitions: new_transitions,
             alphabet: self.alphabet.clone(),
-            idx_to_nfa_states: None,
+            idx_to_data: None,
         }
     }
 
@@ -213,17 +215,15 @@ impl DFA {
         self.end_states.contains(&state)
     }
 
-    fn add_state(dfa: &mut DFA, states: BTreeSet<usize>) -> usize {
+    fn add_state(dfa: &mut DFA<T>, states: T) -> usize {
         dfa.transitions.push(BTreeMap::new());
 
-        if let Some(map) = &mut dfa.idx_to_nfa_states {
-            map.insert(dfa.num_states, states.clone());
+            
+        if let Some(map) = &mut dfa.idx_to_data {
+            map.insert(dfa.num_states, states);
         } else {
-            dfa.idx_to_nfa_states = Some(BTreeMap::new());
-            dfa.idx_to_nfa_states
-                .as_mut()
-                .unwrap()
-                .insert(dfa.num_states, states.clone());
+            dfa.idx_to_data = Some(BTreeMap::new());
+            dfa.idx_to_data.as_mut().unwrap().insert(dfa.num_states, states);
         }
 
         dfa.num_states += 1;
@@ -231,12 +231,12 @@ impl DFA {
     }
 }
 
-impl From<&NFA> for DFA {
+impl From<&NFA> for DFA<NfaStates> {
     fn from(nfa: &NFA) -> Self {
         let mut dfa = DFA::new();
         let alphabet = nfa.get_alphabet();
 
-        let mut state_to_index: BTreeMap<BTreeSet<usize>, usize> = BTreeMap::new();
+        let mut state_to_index: BTreeMap<NfaStates, usize> = BTreeMap::new();
 
         let start = nfa.epsilon_closure(&vec![nfa.get_start_state()]);
         let state_num = Self::add_state(&mut dfa, start);
@@ -245,8 +245,7 @@ impl From<&NFA> for DFA {
 
         while !queue.is_empty() {
             let current_state = queue.pop().unwrap();
-            let current_set: BTreeSet<usize> =
-                dfa.idx_to_nfa_states.as_ref().unwrap()[&current_state].clone();
+            let current_set: NfaStates = dfa.idx_to_data.as_ref().unwrap()[&current_state].clone();
 
             if nfa.contains_final_state(&current_set) {
                 dfa.end_states.push(current_state);
@@ -271,7 +270,7 @@ impl From<&NFA> for DFA {
     }
 }
 
-impl From<&RE::ReOperator> for DFA {
+impl From<&RE::ReOperator> for DFA<NfaStates> {
     fn from(regex: &RE::ReOperator) -> Self {
         let nfa = NFA::from(regex);
         DFA::from(&nfa)
