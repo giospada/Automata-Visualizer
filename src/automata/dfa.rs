@@ -277,7 +277,7 @@ impl From<&RE::ReOperator> for DFA<NfaStates> {
     }
 }
 
-impl Into<Graph> for DFA {
+impl<T> Into<Graph> for DFA<T> {
     fn into(self) -> Graph {
         let mut graph = Graph::new();
 
