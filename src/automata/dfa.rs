@@ -106,20 +106,19 @@ impl<T> DFA<T> {
                 new_transitions[*idx].insert(*transition_ch, *head_to_idx.get(&dest_head).unwrap());
             }
         }
-
-        // create new end states
-        let mut new_end_states = vec![];
+        
+        // create new end states, these should be unique
+        let mut new_end_states = BTreeSet::new();
         for end_state in self.end_states.iter() {
             let head = unequal_sets.find(*end_state);
-            new_end_states.push(*head_to_idx.get(&head).unwrap());
+            new_end_states.insert(*head_to_idx.get(&head).unwrap());
         }
 
         Self {
             num_states,
-            start_state: *head_to_idx
-                .get(&unequal_sets.find(self.start_state))
-                .unwrap(),
-            end_states: new_end_states,
+
+            start_state: *head_to_idx.get(&unequal_sets.find(self.start_state)).unwrap(),
+            end_states: new_end_states.into_iter().collect(),
             transitions: new_transitions,
             alphabet: self.alphabet.clone(),
             idx_to_data: None,
