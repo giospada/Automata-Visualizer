@@ -73,7 +73,7 @@ impl Item {
         let mut used_non_term = vec![false; grammar.get_non_terminal().len()];
         let mut non_terminals = Self::compute_closure_queue(items, &mut used_non_term);
         
-        let dot_production = Self::add_initial_sep(grammar.transitions_to_adj_list());
+        let dot_production = Self::add_initial_sep(grammar.productions_to_adj_list());
 
         // apply the closure to all the non terminals in non_terminals
         while let Some((non_terminal, letter_first)) = non_terminals.pop_front() {
@@ -82,14 +82,14 @@ impl Item {
             .iter()
             .for_each(|rhs| {
                 // with dot_production, the dot is always at 0, so the first letter is 1
-                if rhs.len() >= 1 {
+                if rhs.len() >= 2 {
                     let letter = &rhs[1];
     
                     if let Letter::NonTerminal(non_term) = letter {
                         if !used_non_term[*non_term as usize] {
                             used_non_term[*non_term as usize] = true;
 
-                            if rhs.len() >= 2 {
+                            if rhs.len() >= 3 {
                                 non_terminals.push_back((*non_term, Some(rhs[2].clone())));
                             } else {
                                 non_terminals.push_back((*non_term, None));
@@ -232,6 +232,149 @@ mod tests {
 
     #[test]
     fn closure_0 () {
+        // S -> (S)
+        // S -> A
+        // A -> a
+        let mut grammar = Grammar::new(
+            0,
+            vec![
+                Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::NonTerminal(0), Letter::Terminal(')')] },
+                Production { lhs: 0, rhs: vec![Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('a')] },
+            ],
+        );
+        grammar.add_fake_initial_state();
+
+        let mut start_item = set![Item {
+            production: Production { lhs: 2, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0)] },
+            look_ahead: None,
+        }];
+        let closure = Item::closure(&mut start_item, &mut grammar).into_iter()
+            .map(|item| item.production)
+            .collect::<Vec<_>>();
+
+        let result = vec![
+            Production { lhs: 2, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0)] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('('), Letter::NonTerminal(0), Letter::Terminal(')')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(1)] },
+            Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('a')] },
+        ];
+
+        assert!(closure.iter().all(|item| result.contains(item)));
+        assert!(result.iter().all(|item| closure.contains(item)));
+    }
+
+    #[test]
+    fn closure_1() {
+        // S -> CC
+        // C -> cC
+        // C -> d
+
+        let mut grammar = Grammar::new(
+            0,
+            vec![
+                Production { lhs: 0, rhs: vec![Letter::NonTerminal(1), Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('c'), Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('d')] },
+            ],
+        );
+
+        grammar.add_fake_initial_state();
+
+        let mut start_item = set![Item {
+            production: Production { lhs: 2, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0)] },
+            look_ahead: Some(STRING_END),
+        }];
+
+        let closure: Vec<Item> = Item::closure(&mut start_item, &mut grammar).into_iter().collect();
+
+        let result = vec![
+            Item {
+                production: Production { lhs: 2, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0)] },
+                look_ahead: Some(STRING_END),
+            },
+            Item {
+                production: Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(1), Letter::NonTerminal(1)] },
+                look_ahead: Some(STRING_END),
+            },
+            Item {
+                production: Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('c'), Letter::NonTerminal(1)] },
+                look_ahead: Some('c'),
+            },
+            Item {
+                production: Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('c'), Letter::NonTerminal(1)] },
+                look_ahead: Some('d'),
+            },
+            Item {
+                production: Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('d')] },
+                look_ahead: Some('c'),
+            },
+            Item {
+                production: Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('d')] },
+                look_ahead: Some('d'),
+            },
+        ];
+
+        assert!(closure.iter().all(|item| result.contains(item)));
+        assert!(result.iter().all(|item| closure.contains(item)));
+    }
+
+    #[test]
+    fn goto() {
+        // S -> (S)
+        // S -> ()
+        let mut grammar = Grammar::new(
+            0,
+            vec![
+                Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::NonTerminal(0), Letter::Terminal(')')] },
+                Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::Terminal(')')] },
+            ],
+        );
+        grammar.add_fake_initial_state();
+
+        let mut start_item = set![Item {
+            production: Production { lhs: 1, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0)] },
+            look_ahead: None,
+        }];
+
+        let closure = Item::closure(&mut start_item, &mut grammar);
+        let goto = Item::goto(&closure, &Letter::Terminal('(')).into_iter()
+            .map(|item| item.production)
+            .collect::<Vec<_>>();
+
+        // result should be
+        // S -> (.S)
+        // S -> (.)
+        let result = vec![
+            Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0), Letter::Terminal(')')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::Terminal(ITEM_SEP), Letter::Terminal(')')] },
+        ];
+
+        assert!(goto.iter().all(|item| result.contains(item)));
+        assert!(result.iter().all(|item| goto.contains(item)));
+
+        // SECOND PART OF TEST, APPLY CLOSURE TO GOTO'S OUTPUT
+        let mut goto_items = goto.into_iter()
+            .map(|item| Item {
+                production: item,
+                look_ahead: None,
+            })
+            .collect::<BTreeSet<_>>();
+
+        let closure = Item::closure(&mut goto_items, &mut grammar)
+            .into_iter()
+            .map(|item| item.production)
+            .collect::<Vec<_>>();
+
+        let result = vec![
+            Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::Terminal(ITEM_SEP), Letter::NonTerminal(0), Letter::Terminal(')')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal('('), Letter::Terminal(ITEM_SEP), Letter::Terminal(')')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('('), Letter::NonTerminal(0), Letter::Terminal(')')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal(ITEM_SEP), Letter::Terminal('('), Letter::Terminal(')')] },
+        ];
+
+        assert!(closure.iter().all(|item| result.contains(item)));
+        assert!(result.iter().all(|item| closure.contains(item)));
 
     }
 }

@@ -3,6 +3,8 @@ use std::collections::{BTreeSet, BTreeMap};
 use crate::automata::dfa::DFA;
 use crate::grammar::consts::{EPSILON, STRING_END};
 
+use super::item::Item;
+
 pub type NonTerminal = usize;
 pub type Terminal = char;
 
@@ -31,8 +33,20 @@ pub struct Grammar {
 
 
 impl Grammar {
-    pub fn first_k(&self, letter: &Vec<Letter>, look_ahead: usize) -> BTreeSet<Terminal> {
-        unimplemented!();
+    pub fn new(start_symbol: NonTerminal, productions: Vec<Production>) -> Self {
+        Grammar {
+            start_symbol,
+            productions,
+            nullable: None,
+        }
+    }
+
+    pub fn get_start_symbol(&self) -> NonTerminal {
+        self.start_symbol
+    }
+
+    pub fn get_productions(&self) -> &Vec<Production> {
+        &self.productions
     }
 
     pub fn first(&mut self, letter: &Letter) -> BTreeSet<Terminal> {
@@ -89,10 +103,6 @@ impl Grammar {
         }
 
         first
-    }
-
-    pub fn follow_k(&self, letter: &NonTerminal, look_ahead: usize) -> BTreeSet<Terminal> {
-        unimplemented!();
     }
 
     pub fn follow(&mut self, non_terminal: &NonTerminal) -> BTreeSet<Terminal> {
@@ -355,7 +365,7 @@ impl Grammar {
         });
 
         // add corresponding productions 
-        let mut adj_list = self.transitions_to_adj_list();
+        let mut adj_list = self.productions_to_adj_list();
         for unitary_couple in unitary_couples.iter() {
             if unitary_couple.0 == unitary_couple.1 {
                 continue;
@@ -384,7 +394,7 @@ impl Grammar {
         self.nullable = None;
     }
 
-    pub fn transitions_to_adj_list(&self) -> BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> {
+    pub fn productions_to_adj_list(&self) -> BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> {
         let mut adj_list: BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> = BTreeMap::new();
         for production in self.productions.iter() {
             adj_list.entry(production.lhs)
@@ -393,6 +403,16 @@ impl Grammar {
         }
 
         adj_list
+    }
+
+    pub fn add_fake_initial_state(&mut self) -> () {
+        let new_state = self.get_non_terminal().iter().max().unwrap() + 1;
+        self.productions.push(Production {
+            lhs: new_state,
+            rhs: vec![Letter::NonTerminal(self.start_symbol)]
+        });
+
+        self.start_symbol = new_state;
     }
 }
 
