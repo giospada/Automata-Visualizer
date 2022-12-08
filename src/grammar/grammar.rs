@@ -288,6 +288,22 @@ mod test {
     }
 
     #[test]
+    fn test_first_cycle() {
+        let mut grammar = Grammar {
+            start_symbol: 0,
+            productions: vec![
+                Production { lhs: 0, rhs: vec![Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::NonTerminal(0)] },
+            ],
+            nullable: None,
+        };
+
+        let first = grammar.first(&Letter::NonTerminal(0));
+
+        assert_eq!(first.len(), 0);
+    }
+
+    #[test]
     fn test_follow() {
         let mut grammar = get_test_grammar();
 
