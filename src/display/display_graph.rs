@@ -281,7 +281,7 @@ impl DisplayGraph {
         use std::collections::VecDeque;
         let mut labels = VecDeque::new();
         for edge in self.edges_type.iter() {
-            if let Some(val) = self.draw_edge_and_get_label_pos(painter, to_screen, ui, edge) {
+            if let Some(val) = self.draw_edge_and_get_label_pos(painter, to_screen, edge) {
                 labels.push_back(val);
             }
         }
