@@ -1,13 +1,14 @@
 use eframe::egui;
 use egui::{emath, Color32, Frame, Pos2, Rect, RichText, Window};
 
-use crate::display::display_graph::{DisplayGraph, DisplayGraphParameter};
-use crate::display::visualizer::Visualizer;
-use crate::automata::regular_expression::ReOperator;
-use crate::automata::nfa::NFA;
 use crate::automata::dfa::DFA;
+use crate::automata::nfa::NFA;
+use crate::automata::regular_expression::ReOperator;
+use crate::display::display_graph::DisplayGraphParameter;
+use crate::display::visualizer::Visualizer;
+use crate::utils::graph::Graph;
 
-pub struct EguiApp  {
+pub struct EguiApp {
     error: Option<String>,
     regex_text: String,
 
@@ -20,7 +21,6 @@ pub struct EguiApp  {
     // with both indixes and names, but it's problematic how to do it
     // in rust.
     to_visualize: [Visualizer; 4],
-
 }
 
 impl Default for EguiApp {
@@ -30,11 +30,10 @@ impl Default for EguiApp {
             regex_text: String::new(),
 
             to_visualize: [
-                Visualizer::new("Regex Syntax Tree".to_string()), 
+                Visualizer::new("Regex Syntax Tree".to_string()),
                 Visualizer::new("NFA".to_string()),
                 Visualizer::new("DFA".to_string()),
                 Visualizer::new("Minimized DFA".to_string()),
-
             ],
         }
     }
@@ -45,7 +44,7 @@ impl EguiApp {
         Self::default()
     }
 
-    pub fn get_converter(index: i32) -> impl Fn(ReOperator) -> DisplayGraph {
+    pub fn get_converter(index: i32) -> impl Fn(ReOperator) -> Graph {
         match index {
             0 => |re: ReOperator| re.into(),
             1 => |re: ReOperator| NFA::from(&re).into(),
@@ -68,38 +67,43 @@ impl eframe::App for EguiApp {
                             .on_hover_text("Enter a regular expression");
                     });
                 }
-                if ui.button(format!("Generate {}", visualizer.box_title)).clicked() {
+                if ui
+                    .button(format!("Generate {}", visualizer.box_title))
+                    .clicked()
+                {
                     match ReOperator::from_string(&self.regex_text) {
                         Ok(re) => {
-                            visualizer.set_graph(Self::get_converter(index as i32)(re));
+                            visualizer.set_graph(Self::get_converter(index as i32)(re).into());
                             self.error = None;
                         }
-                        
+
                         Err(e) => {
                             self.error = Some(e.to_string());
                         }
                     };
                 }
 
-                ui.collapsing(format!("{} visualizer option", visualizer.box_title), |ui| {
-                    ui.add(
-                        egui::Slider::new(&mut visualizer.padding_x, 10.0..=100.0)
-                            .text("padding x"),
-                    );
-                    ui.add(
-                        egui::Slider::new(&mut visualizer.padding_y, 10.0..=100.0)
-                            .text("padding y"),
-                    );
-                    ui.add(
-                        egui::Slider::new(&mut visualizer.size_node, 10.0..=100.0)
-                            .text("node size"),
-                    );
-                });
+                ui.collapsing(
+                    format!("{} visualizer option", visualizer.box_title),
+                    |ui| {
+                        ui.add(
+                            egui::Slider::new(&mut visualizer.padding_x, 10.0..=100.0)
+                                .text("padding x"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut visualizer.padding_y, 10.0..=100.0)
+                                .text("padding y"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut visualizer.size_node, 10.0..=100.0)
+                                .text("node size"),
+                        );
+                    },
+                );
             }
             if let Some(err) = &self.error {
                 ui.label(RichText::new(err).color(Color32::RED));
             }
-          
         });
         for visualizer in self.to_visualize.iter_mut() {
             visualizer.check_open();
@@ -126,7 +130,6 @@ impl eframe::App for EguiApp {
                     }
                 })
             });
-            
         }
     }
 }

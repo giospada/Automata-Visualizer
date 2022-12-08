@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::display::display_graph::{DisplayGraph};
 use crate::automata::nfa::NFA;
 use crate::automata::regular_expression as RE;
+use crate::utils::graph::{Graph, IndEdge, IndNode};
 use crate::utils::DisjointUnionFind::DisjointUnionFind;
 
 type NfaStates = BTreeSet<usize>;
@@ -14,7 +14,6 @@ pub struct DFA<T> {
     end_states: Vec<usize>,
     transitions: Vec<BTreeMap<char, usize>>,
     alphabet: Vec<char>,
-
 
     // TODO: use this in visualization
     idx_to_data: Option<BTreeMap<usize, T>>,
@@ -38,8 +37,8 @@ impl<T> DFA<T> {
     /// if alphabet is None, the alphabet is inferred from the transitions.
     pub fn from_state(
         num_states: usize,
-        start_state: usize, 
-        end_states: Vec<usize>, 
+        start_state: usize,
+        end_states: Vec<usize>,
         transitions: Vec<BTreeMap<char, usize>>,
         alphabet: Option<Vec<char>>,
     ) -> Self {
@@ -97,7 +96,7 @@ impl<T> DFA<T> {
                 curr_idx += 1;
             }
         }
-        
+
         // create new transitions mapper
         let num_states = unequal_sets.get_size();
         let mut new_transitions = vec![BTreeMap::new(); num_states];
@@ -114,9 +113,10 @@ impl<T> DFA<T> {
             let head = unequal_sets.find(*end_state);
             new_end_states.insert(*head_to_idx.get(&head).unwrap());
         }
-        
+
         Self {
             num_states,
+
             start_state: *head_to_idx.get(&unequal_sets.find(self.start_state)).unwrap(),
             end_states: new_end_states.into_iter().collect(),
             transitions: new_transitions,
@@ -125,13 +125,12 @@ impl<T> DFA<T> {
         }
     }
 
-
     pub fn make_move(&self, state: usize, input: char) -> usize {
         if state > self.num_states {
             panic!("Invalid state");
         } else if !self.alphabet.contains(&input) {
             panic!("Invalid input character");
-        } 
+        }
 
         self.transitions[state].get(&input).unwrap().clone()
     }
@@ -168,7 +167,7 @@ impl<T> DFA<T> {
                         continue;
                     }
 
-                    for  alphabet_ch in &self.alphabet {
+                    for alphabet_ch in &self.alphabet {
                         let mut next_i = self.make_move(i, *alphabet_ch);
                         let mut next_j = self.make_move(j, *alphabet_ch);
 
@@ -217,6 +216,7 @@ impl<T> DFA<T> {
 
     fn add_state(dfa: &mut DFA<T>, states: T) -> usize {
         dfa.transitions.push(BTreeMap::new());
+
             
         if let Some(map) = &mut dfa.idx_to_data {
             map.insert(dfa.num_states, states);
@@ -224,8 +224,8 @@ impl<T> DFA<T> {
             dfa.idx_to_data = Some(BTreeMap::new());
             dfa.idx_to_data.as_mut().unwrap().insert(dfa.num_states, states);
         }
-        
-        dfa.num_states += 1; 
+
+        dfa.num_states += 1;
         dfa.num_states - 1
     }
 }
@@ -253,7 +253,7 @@ impl From<&NFA> for DFA<NfaStates> {
             for alphabet_char in &alphabet {
                 let mut next_set = nfa.make_move(&current_set, alphabet_char.clone());
                 next_set = nfa.epsilon_closure(&next_set.into_iter().collect());
-                
+
                 if !state_to_index.contains_key(&next_set) {
                     let next_state = Self::add_state(&mut dfa, next_set.clone());
                     state_to_index.insert(next_set.clone(), next_state);
@@ -264,7 +264,6 @@ impl From<&NFA> for DFA<NfaStates> {
             }
         }
         dfa.alphabet = alphabet;
-
 
         dfa
     }
@@ -277,56 +276,48 @@ impl From<&RE::ReOperator> for DFA<NfaStates> {
     }
 }
 
-impl<T> Into<DisplayGraph> for DFA<T> {
-    fn into(self) -> DisplayGraph {
-        let mut visited = vec![false; self.num_states];
-        let mut to_visit = vec![];
-        let mut graph = vec![];
-        let mut labels = vec![];
+impl<T> Into<Graph> for DFA<T> {
+    fn into(self) -> Graph {
+        let mut graph = Graph::new();
 
-        graph.push(vec![self.start_state as usize]);        
-        to_visit.push(self.start_state);
-        visited[self.start_state] = true;
+        let finals_nodes = self
+            .end_states
+            .clone()
+            .into_iter()
+            .collect::<BTreeSet<usize>>();
 
-        while !to_visit.is_empty() {
-            let mut current_nodes=vec![];
-            let mut new_to_visit =vec![];    
-            for index in to_visit{
-                current_nodes.push(index);
-                labels.push(index.to_string());
+        let get_label = |node| {
+            if node == self.start_state {
+                format!("s:{}", node)
+            } else if finals_nodes.contains(&node) {
+                format!("e:{}", node)
+            } else {
+                format!("{}", node)
+            }
+        };
+        // map the node_id in the dfa to the node id in the graph
+        let translate_table = (0..self.num_states)
+            .map(|node| (node, graph.add_node(Some(get_label(node)))))
+            .collect::<BTreeMap<usize, IndNode>>();
 
-                for i in self.transitions[index].keys(){
-                    if !visited[self.transitions[index][i]] {
-                        visited[self.transitions[index][i]] = true;
-                        new_to_visit.push(self.transitions[index][i]);
-                    }
+        self.transitions.iter().enumerate().for_each(|(from, adj)| {
+            // we compact all edge that go to the same node
+            // and we upate the label for all the node added
+            let mut added_edge: BTreeMap<IndNode, IndEdge> = BTreeMap::new();
+            adj.iter().for_each(|(label, to)| {
+                let ind = added_edge.entry(*to).or_insert(graph.add_edge(
+                    translate_table[&from],
+                    translate_table[to],
+                    None,
+                ));
+                let old_label = graph.modify_edge_label(*ind);
+                *old_label = match old_label {
+                    Some(val) => Some(format!("{},{}", val, label)),
+                    None => Some(format!("{}", label)),
                 }
-            }
-
-            graph.push(current_nodes);
-            to_visit = new_to_visit;
-        }
-
-        let mut edge: Vec<(usize,usize,Option<String>)> = Vec::new();
-
-        for (from, _edgemap) in self.transitions.iter().enumerate() {
-            let mut collect_edge:BTreeMap<usize,String> = BTreeMap::new();
-
-            for (label,to) in self.transitions[from].iter() {
-                collect_edge.entry(*to)
-                    .and_modify(|x| *x = format!("{},{}", *x, label))
-                    .or_insert(format!("{}", *label));
-            }
-            for (to,label) in collect_edge.iter() {
-                edge.push((from,*to,Some(label.clone())))
-            }
-        }
-
-        labels[self.start_state] = format!("s:{}",labels[self.start_state]);
-        for end_state in &self.end_states {
-            labels[*end_state] = format!("e:{}",labels[*end_state]);
-        }
-
-        DisplayGraph::new(edge,labels,graph)
+            })
+        });
+        let _start_node = translate_table[&self.start_state];
+        graph
     }
 }

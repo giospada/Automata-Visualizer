@@ -3,7 +3,8 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 use crate::display::display_graph::DisplayGraph;
-use crate::error::{InvalidCharacter, UnvalidParentesis, InvalidTokenError};
+use crate::error::{InvalidCharacter, InvalidTokenError, UnvalidParentesis};
+use crate::utils::graph::{Graph, IndNode};
 
 #[derive(Debug, Clone)]
 pub enum ReOperator {
@@ -43,7 +44,7 @@ impl ReOperator {
 
         Ok(*res)
     }
-    
+
     fn label(&self) -> String {
         match self {
             ReOperator::Char(c) => c.to_string(),
@@ -52,47 +53,29 @@ impl ReOperator {
             ReOperator::KleeneStar(_) => "*".to_string(),
         }
     }
-    fn childs(&self)->Vec<&Self>{
-        match self{
+    fn childs(&self) -> Vec<&Self> {
+        match self {
             ReOperator::Char(_) => Vec::new(),
-            ReOperator::Concat(b1,b2) => vec![b1,b2],
-            ReOperator::Or(b1,b2) => vec![b1,b2],
-            ReOperator::KleeneStar(b) => vec![b]
+            ReOperator::Concat(b1, b2) => vec![b1, b2],
+            ReOperator::Or(b1, b2) => vec![b1, b2],
+            ReOperator::KleeneStar(b) => vec![b],
         }
+    }
+    fn build_recursive_graph(&self, graph: &mut Graph) -> IndNode {
+        let top = graph.add_node(Some(self.label()));
+        for rep in self.childs() {
+            let child = rep.build_recursive_graph(graph);
+            graph.add_edge(top, child, None);
+        }
+        top
     }
 }
 
-impl Into<DisplayGraph> for ReOperator{
-     fn into(self) -> DisplayGraph{
-        let mut child = vec![];
-        let mut graph=vec![];
-        let mut labels=vec![];
-        let mut edge:Vec<(usize,usize,Option<String>)>=Vec::new();
-        let mut number_nodes=1 as usize;
-
-        graph.push(vec![0 as usize]);        
-        child.push((0, &self));
-
-        while !child.is_empty() {
-            let mut current_nodes=vec![];
-            let mut newchild =vec![];    
-            
-            for (index,node) in child{
-                current_nodes.push(index);
-                labels.push(node.label());
-                
-                for child in node.childs(){
-                    edge.push((index,number_nodes,None));
-                    newchild.push((number_nodes,child));
-                    number_nodes+=1;
-                }
-
-            }
-            graph.push(current_nodes);
-            child = newchild;
-        }
-
-        DisplayGraph::new(edge,labels,graph)
+impl Into<Graph> for ReOperator {
+    fn into(self) -> Graph {
+        let mut graph= Graph::new();
+        self.build_recursive_graph(&mut graph);
+        graph
     }
 }
 
@@ -100,6 +83,7 @@ impl Into<DisplayGraph> for ReOperator{
 /// concatenation is left associative
 /// or is right associative
 /// kleene is an operation on a single character, or on parens.
+
 /// 
 /// this parser return the re operator of the CURRENT SCOPE
 /// this means that if ((aaa)bbb), it returns the re operator for this
@@ -129,6 +113,7 @@ fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<R
     Ok(parse_tree)
 }
 
+
 /// returns the re operator for a single token, described by the same grammar in [parse_token]
 fn elaborate_next_token(
     chars: &mut Peekable<Chars>, 
@@ -139,25 +124,29 @@ fn elaborate_next_token(
         if let Some(t) = tree {
             return Ok(t);
         } else {
-            return Err(Box::new(InvalidTokenError::new("Empty string is not accepted".to_string())));
+            return Err(Box::new(InvalidTokenError::new(
+                "Empty string is not accepted".to_string(),
+            )));
         }
     }
 
     let curr_char = chars.peek().unwrap();
     if !is_valid_char(*curr_char) {
         return Err(Box::new(InvalidCharacter::new(*curr_char)));
-    } 
-    
+    }
+
     if *curr_char == '(' {
         chars.next();
         *open_parens += 1;
         let next_tree = parse_rec(chars, open_parens)?;
-        
+
         if chars.peek() == Some(&'*') {
             chars.next();
             if let Some(parse_tree) = tree {
-                tree = Some(Box::new(ReOperator::Concat(parse_tree, 
-                    Box::new(ReOperator::KleeneStar(next_tree)))));
+                tree = Some(Box::new(ReOperator::Concat(
+                    parse_tree,
+                    Box::new(ReOperator::KleeneStar(next_tree)),
+                )));
             } else {
                 tree = Some(Box::new(ReOperator::KleeneStar(next_tree)));
             }
@@ -168,7 +157,7 @@ fn elaborate_next_token(
         }
     } else if *curr_char == '|' {
         chars.next();
-        
+
         if let Some(parse_tree) = tree {
             // può ritornare solamente per ")" oppure fine stringa
             let next_tree = parse_rec(chars, open_parens)?;
@@ -238,12 +227,14 @@ fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
     if token.len() == 0 {
         return Err(Box::new(InvalidTokenError::new("Empty token".to_string())));
     } else if token.starts_with("*") {
-        return Err(Box::new(InvalidTokenError::new("token can't start with *".to_string())));
+        return Err(Box::new(InvalidTokenError::new(
+            "token can't start with *".to_string(),
+        )));
     }
 
     let mut chars = token.chars().peekable();
     let mut tree_top = get_next_node(&mut chars)?;
-    
+
     while chars.peek().is_some() {
         tree_top = Box::new(ReOperator::Concat(tree_top, get_next_node(&mut chars)?));
     }
@@ -271,7 +262,9 @@ fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn
         'a'..='z' | 'A'..='Z' | '0'..='9' => {
             if chars.peek() == Some(&'*') {
                 chars.next();
-                return Ok(Box::new(ReOperator::KleeneStar(Box::new(ReOperator::Char(curr_char)))));
+                return Ok(Box::new(ReOperator::KleeneStar(Box::new(
+                    ReOperator::Char(curr_char),
+                ))));
             } else {
                 return Ok(Box::new(ReOperator::Char(curr_char)));
             }
@@ -289,10 +282,11 @@ fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn
     }
 }
 
+
+
 fn is_valid_char(c: char) -> bool {
     c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
 }
-
 
 #[cfg(test)]
 mod test {
