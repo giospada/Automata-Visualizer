@@ -56,9 +56,9 @@ impl Grammar {
         reachable.insert(self.start_symbol);
         while has_changed {
             has_changed = false;
-            for production in self.productions.iter() {
+            self.productions.iter().for_each(|production| -> () {
                 if !reachable.contains(&production.lhs) {
-                    continue;
+                    return;
                 }
                 for letter in production.rhs.iter() {
                     match letter {
@@ -71,7 +71,7 @@ impl Grammar {
                         Letter::Terminal(_) => {}
                     }
                 }
-            }
+            });
         }
 
         reachable
@@ -83,22 +83,30 @@ impl Grammar {
     /// This is still O(m^2) implementation, could be optimized
     pub fn get_generators(&self) -> BTreeSet<usize> {
         let mut generators = BTreeSet::new();
-        for production in self.productions.iter() {
-            let mut is_generator = true;
-            for letter in production.rhs.iter() {
-                match letter {
-                    Letter::NonTerminal(non_terminal) => {
-                        if !generators.contains(non_terminal) {
-                            is_generator = false;
-                            break;
+        let mut has_changed = true;
+
+        while has_changed {
+            has_changed = false;
+            
+            self.productions.iter().for_each(|production| -> () {
+                let mut is_generator = true;
+                production.rhs.iter().for_each(|letter| -> () {
+                    match letter {
+                        Letter::NonTerminal(non_terminal) => {
+                            if !generators.contains(non_terminal) {
+                                is_generator = false;
+                                return;
+                            }
                         }
+                        Letter::Terminal(_) => {}
                     }
-                    Letter::Terminal(_) => {}
+                });
+
+                if is_generator {
+                    generators.insert(production.lhs);
+                    has_changed = true;
                 }
-            }
-            if is_generator {
-                generators.insert(production.lhs);
-            }
+            });
         }
 
         generators
