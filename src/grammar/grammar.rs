@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, BTreeMap};
 
-use crate::automata::dfa::DFA;
+use crate::automata::DFA;
 
 pub type NonTerminal = usize;
 pub type Terminal = char;

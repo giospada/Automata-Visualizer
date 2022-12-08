@@ -1,1 +1,3 @@
-pub mod grammar;
+mod grammar;
+
+pub use grammar::*;

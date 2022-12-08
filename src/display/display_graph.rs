@@ -1,4 +1,4 @@
-use crate::utils::graph::*;
+use crate::utils::*;
 use eframe::epaint::QuadraticBezierShape;
 use egui::{
     emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
