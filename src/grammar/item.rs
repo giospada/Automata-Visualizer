@@ -1,15 +1,14 @@
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::{BTreeSet, BTreeMap, VecDeque};
 
-use crate::grammar::grammar::{Letter, NonTerminal, Production};
-use crate::grammar::consts::{EPSILON, STRING_END, ITEM_SEP};
+use crate::grammar::grammar::{Grammar, Letter, Terminal, NonTerminal, Production};
+use crate::grammar::consts::{EPSILON, ITEM_SEP};
+
+use super::consts::STRING_END;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Item {
     production: Production,
-    look_ahead: String,
-
-    /// number of the lookahead for the item
-    num: usize,
+    look_ahead: Option<Terminal>,
 }
 
 impl Item {
@@ -47,6 +46,7 @@ impl Item {
         itemized_prod
     }
 
+    /// adds a ITEM_SEP to the beginning of each production
     fn add_initial_sep(productions: BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>>) 
         -> BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> {
             let mut result_prod = BTreeMap::new();
@@ -65,49 +65,108 @@ impl Item {
     /// return the closure of the set **productions** in the input
     /// with the given look_ahead
     /// production is the adjiacency list of all the productions
-    fn closure(
+    pub fn closure(
         items: &BTreeSet<Item>,
-        productions: BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>>, 
-        look_ahead: usize) -> BTreeSet<Item> 
-    {
+        grammar: &mut Grammar,
+    ) -> BTreeSet<Item> {
         let mut closure_items = (*items).clone();
-        let dot_production = Self::add_initial_sep(productions);
+        let mut used_non_term = vec![false; grammar.get_non_terminal().len()];
+        let mut non_terminals = Self::compute_closure_queue(items, &mut used_non_term);
+        
+        let dot_production = Self::add_initial_sep(grammar.transitions_to_adj_list());
 
-        items.iter().for_each(|item| {
-            let item_sep_pos = item.production.rhs.iter().position(|letter| *letter == Letter::Terminal(ITEM_SEP));
-            if item_sep_pos.is_none() {
-                return;
-            }
+        // apply the closure to all the non terminals in non_terminals
+        while let Some((non_terminal, letter_first)) = non_terminals.pop_front() {
+            dot_production.get(&non_terminal)
+            .unwrap()
+            .iter()
+            .for_each(|rhs| {
+                // with dot_production, the dot is always at 0, so the first letter is 1
+                if rhs.len() >= 1 {
+                    let letter = &rhs[1];
+    
+                    if let Letter::NonTerminal(non_term) = letter {
+                        if !used_non_term[*non_term as usize] {
+                            used_non_term[*non_term as usize] = true;
 
-            let item_sep_pos = item_sep_pos.unwrap();
-            if item_sep_pos == item.production.rhs.len() - 1 {
-                return;
-            }
-
-            let next_letter = &item.production.rhs[item_sep_pos + 1];
-            if let Letter::NonTerminal(non_terminal) = next_letter {
-                let mut new_items = dot_production.get(non_terminal)
-                    .unwrap()
-                    .iter()
-                    .map(|rhs| {
-                    Item {
-                        production: Production {
-                            lhs: *non_terminal,
-                            rhs: rhs.clone(),
-                        },
-                        look_ahead: item.look_ahead.clone(),
-                        num: look_ahead,
+                            if rhs.len() >= 2 {
+                                non_terminals.push_back((*non_term, Some(rhs[2].clone())));
+                            } else {
+                                non_terminals.push_back((*non_term, None));
+                            }
+                        }
                     }
-                }).collect::<BTreeSet<Item>>();
 
-                closure_items.append(&mut new_items);
-            }
-        });
+                }
+
+                let production = Production {
+                    lhs: non_terminal,
+                    rhs: rhs.clone(),
+                };
+                
+                // Closure with first only if the precedente look_ahead has been set!
+                // this should save some computation time.
+                if let None = letter_first {
+                    closure_items.insert(Item {
+                        production: production,
+                        look_ahead: None,
+                    });
+                    return;
+                }
+
+                let first = letter_first.as_ref().unwrap();
+                let first_letter_set = grammar.first(first);
+                
+                first_letter_set.iter().for_each(|look_ahead| {
+                    closure_items.insert(Item {
+                        production: production.clone(),
+                        look_ahead: Some(*look_ahead),
+                    });
+                });
+            });
+        }
 
         closure_items
     }
 
-    fn goto(items: &BTreeSet<Item>) -> BTreeSet<Item> {
+    /// queue of non_terminal to explore and next letter for first
+    fn compute_closure_queue(items: &BTreeSet<Item>, used_non_term: &mut Vec<bool>) 
+        -> VecDeque<(NonTerminal, Option<Letter>)> {
+            let mut non_terminals: VecDeque<(NonTerminal, Option<Letter>)> = VecDeque::new();
+            items.iter().for_each(|item| {
+                let item_sep_pos = item.production.rhs.iter()
+                    .position(|letter| *letter == Letter::Terminal(ITEM_SEP));
+                if item_sep_pos.is_none() {
+                    return;
+                }
+
+                let item_sep_pos = item_sep_pos.unwrap();
+                if item_sep_pos == item.production.rhs.len() - 1 {
+                    return;
+                }
+
+                let next_letter = &item.production.rhs[item_sep_pos + 1];
+
+                if let Letter::NonTerminal(non_terminal) = next_letter {
+                    if used_non_term[*non_terminal] {
+                        return;
+                    }
+                    used_non_term[*non_terminal] = true;
+
+                    if let None = item.look_ahead {
+                        non_terminals.push_back((*non_terminal, None));
+                    } else if item_sep_pos < item.production.rhs.len() - 2 {
+                        non_terminals.push_back((*non_terminal, Some(item.production.rhs[item_sep_pos + 2].clone())));
+                    } else {
+                        non_terminals.push_back((*non_terminal, Some(Letter::Terminal(STRING_END))));
+                    }
+                }
+            });
+
+            non_terminals
+        }
+
+    pub fn goto(items: &BTreeSet<Item>, letter: &Letter) -> BTreeSet<Item> {
         let mut goto_items: BTreeSet<Item> = BTreeSet::new();
 
         items.iter().for_each(|item| {
@@ -121,8 +180,7 @@ impl Item {
                 return;
             }
 
-            let next_letter = &item.production.rhs[item_sep_pos + 1];
-            if *next_letter == Letter::Terminal(STRING_END) {
+            if &item.production.rhs[item_sep_pos + 1] != letter {
                 return;
             }
 
@@ -139,8 +197,10 @@ impl Item {
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::set;
     #[test]
     fn test_itemization() {
         let productions = vec![
@@ -168,5 +228,10 @@ mod tests {
 
         assert!(items.iter().all(|item| result_productions.contains(item)));
         assert!(result_productions.iter().all(|item| items.contains(item)));
+    }
+
+    #[test]
+    fn closure_0 () {
+
     }
 }
