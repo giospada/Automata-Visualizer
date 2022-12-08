@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet};
 
-use super::{Grammar, NonTerminal, Letter, Production};
+use super::{Grammar, Letter, Production};
 
 impl Grammar {
     pub fn remove_useless(&mut self) -> () {
@@ -30,42 +30,6 @@ impl Grammar {
 
         // invalidate nullable
         self.nullable = None;
-    }
-
-    pub fn get_unitary_couples(&self) -> BTreeSet<(NonTerminal, NonTerminal)>  {
-        let non_terminals = self.get_non_terminal();
-        let mut unitary_couples = BTreeSet::new();
-        let mut has_changed = true;
-
-        for non_terminal in non_terminals {
-            unitary_couples.insert((non_terminal, non_terminal));
-        }
-        
-        while has_changed {
-            has_changed = false;
-            for production in self.productions.iter() {
-                if production.rhs.len() != 1 {
-                    continue;
-                }
-                let mut to_insert = BTreeSet::new();
-                for unitary_couple in unitary_couples.iter() {
-                    if let Letter::NonTerminal(non_term) = production.rhs[0] {
-                        if unitary_couple.1 == production.lhs && 
-                         !unitary_couples.contains(&(unitary_couple.0, non_term)) &&
-                         !to_insert.contains(&(unitary_couple.0, non_term)) {
-                            to_insert.insert((unitary_couple.0, non_term));
-                        }
-                    }
-                }
-
-                if to_insert.len() > 0 {
-                    unitary_couples.append(&mut to_insert);
-                    has_changed = true;
-                }
-            }
-        }
-
-        unitary_couples
     }
 
     // TODO: this is a very complex function in this moment, it needs refactor

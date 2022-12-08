@@ -87,7 +87,7 @@ impl Grammar {
 
         while has_changed {
             has_changed = false;
-            
+
             self.productions.iter().for_each(|production| -> () {
                 let mut is_generator = true;
                 production.rhs.iter().for_each(|letter| -> () {
@@ -110,6 +110,46 @@ impl Grammar {
         }
 
         generators
+    }
+
+    /// returns set of unitary couples of non terminals
+    /// a unitary couple is a couple of non terminals (A, B) such that
+    /// A -> B is a production in the grammar or A -> C, C -> B is a production
+    /// (aka it's transitive and reflexive)
+    pub fn get_unitary_couples(&self) -> BTreeSet<(NonTerminal, NonTerminal)>  {
+        let non_terminals = self.get_non_terminal();
+        let mut unitary_couples = BTreeSet::new();
+        let mut has_changed = true;
+
+        for non_terminal in non_terminals {
+            unitary_couples.insert((non_terminal, non_terminal));
+        }
+        
+        while has_changed {
+            has_changed = false;
+            for production in self.productions.iter() {
+                if production.rhs.len() != 1 {
+                    continue;
+                }
+                let mut to_insert = BTreeSet::new();
+                for unitary_couple in unitary_couples.iter() {
+                    if let Letter::NonTerminal(non_term) = production.rhs[0] {
+                        if unitary_couple.1 == production.lhs && 
+                         !unitary_couples.contains(&(unitary_couple.0, non_term)) &&
+                         !to_insert.contains(&(unitary_couple.0, non_term)) {
+                            to_insert.insert((unitary_couple.0, non_term));
+                        }
+                    }
+                }
+
+                if to_insert.len() > 0 {
+                    unitary_couples.append(&mut to_insert);
+                    has_changed = true;
+                }
+            }
+        }
+
+        unitary_couples
     }
 }
 
