@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::automata::nfa::NFA;
+use crate::automata::NFA;
 use crate::automata::regular_expression as RE;
-use crate::utils::graph::{Graph, IndEdge, IndNode};
-use crate::utils::DisjointUnionFind::DisjointUnionFind;
+use crate::utils::{Graph, IndEdge, IndNode};
+use crate::utils::DisjointUnionFind;
 
 type NfaStates = BTreeSet<usize>;
 

@@ -1,3 +1,7 @@
-pub mod dfa;
-pub mod nfa;
-pub mod regular_expression;
+ mod dfa;
+ mod nfa;
+ mod regular_expression;
+
+ pub use dfa::*;
+ pub use nfa::*;
+ pub use regular_expression::*;

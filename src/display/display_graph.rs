@@ -1,4 +1,4 @@
-use crate::utils::graph::*;
+use crate::utils::*;
 use eframe::epaint::QuadraticBezierShape;
 use egui::{
     emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
@@ -13,13 +13,18 @@ const COLOR_NODES: Color32 = Color32::WHITE;
 const COLOR_LABEL_EDGE: Color32 = Color32::GRAY;
 const COLOR_LABEL_NODE: Color32 = Color32::BLACK;
 
-// edge type
+/// Rapresent the edges types
 pub enum EdgeType {
+    /// the edge point to it's self
     SELFLOOP,
+    /// the edge points to an other node and there's not a edge in the opposit direction
     DIRECTED,
+    /// the edge point to an other nodes_pos
+    /// and there's an edge that points to the opposit direction
     COLLIDING,
 }
 
+/// contains the graph and a structure
 pub struct DisplayGraph {
     graph: Graph,
     nodes_pos: BTreeMap<IndNode, Pos2>,
@@ -28,6 +33,7 @@ pub struct DisplayGraph {
     last_parameter: DisplayGraphParameter,
 }
 
+/// this struct contains, the values for drowing the graph
 #[derive(PartialEq, Copy, Clone)]
 pub struct DisplayGraphParameter {
     pub padding_x: f32,
@@ -72,6 +78,8 @@ impl From<Graph> for DisplayGraph {
 }
 
 impl DisplayGraph {
+    /// calculate all nodes positions based on the graph traversal order (given by bfs_order)
+    /// and the Display Paramters
     fn calculate_nodes_position(&mut self, bfs_max_width: f32) {
         let params = self.last_parameter;
         let width_painting_area =
@@ -89,6 +97,7 @@ impl DisplayGraph {
         }
     }
 
+    /// it reposition all edge if the Drowing paramters change
     pub fn position(&mut self, params: DisplayGraphParameter) -> Vec2 {
         let bfs_max_width = self
             .explorer_order
@@ -132,7 +141,7 @@ impl DisplayGraph {
         }
     }
 
-    // dist should be 0<=dist<=1
+    /// the dist should be 0<=dist<=1
     fn calc_quadratic_bezier_curves(pos: [Pos2; 3], dist: f32) -> Pos2 {
         let dist = if dist < 0. {
             0.
@@ -147,6 +156,7 @@ impl DisplayGraph {
         .to_pos2()
     }
 
+    /// drows an arrow the the tip lenght set in the by ARROW_TIP_LENGHT
     fn draw_arrow(painter: &Painter, origin: Pos2, vec: Vec2, stroke: Stroke) {
         use egui::emath::*;
         let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
@@ -159,6 +169,7 @@ impl DisplayGraph {
         painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
     }
 
+    /// drow a bezier line with an arrow on the tip
     fn draw_arrow_bezier(painter: &Painter, positions: [Pos2; 3], stroke: Stroke) {
         use egui::emath::*;
         let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
@@ -178,11 +189,13 @@ impl DisplayGraph {
         painter.line_segment([tip, tip + tip_length * (rot.inverse() * dir)], stroke);
     }
 
+
+
+    //TODO refactor for legibilities
     fn draw_edge_and_get_label_pos(
         &self,
         painter: &egui::Painter,
         to_screen: RectTransform,
-        ui: &egui::Ui,
         (ind, edge_type): (&IndEdge, &EdgeType),
     ) -> Option<(Pos2, &String)> {
         let mut label_pos = Pos2::new(0., 0.);
@@ -329,6 +342,7 @@ impl DisplayGraph {
             }
         }
     }
+
 
     pub fn draw(&self, painter: &egui::Painter, to_screen: RectTransform, ui: &egui::Ui) {
         self.draw_edge(painter, to_screen, ui);

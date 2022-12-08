@@ -3,11 +3,15 @@ use std::collections::{BTreeSet, VecDeque};
 // we youse this custom type because we want to access only
 // the index returned by this struct, in a future they could be
 // RefCell or somthing similar
+
+/// Index of a node, this type makes soure that is returned by the graph
 pub type IndNode = usize;
+/// Index of a edge, this type makes soure that is returned by the graph
 pub type IndEdge = usize;
 
-// maybe label can be set to a generic type
+
 pub struct Edge {
+    // maybe label can be set to a generic type
     pub id: IndEdge,
     pub from: IndNode,
     pub to: IndNode,
@@ -21,8 +25,10 @@ pub struct Node {
     edges: Vec<IndEdge>,
 }
 
-// in this implementation the graph can be only added edge and node
-// the remove of both will be implmentent in a next version
+/// in this implementation the graph hash two operation:
+/// - add edge
+/// - add node
+/// the remove of both node and edge may implmentent in a next version
 pub struct Graph {
     nodes: Vec<Node>,
     edges: Vec<Edge>,

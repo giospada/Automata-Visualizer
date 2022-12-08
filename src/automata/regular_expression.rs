@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 use crate::error::{InvalidCharacter, InvalidTokenError, UnvalidParentesis};
-use crate::utils::graph::{Graph, IndNode};
+use crate::utils::{Graph, IndNode};
 
 /// Structure that represents a regular expression parse tree
 /// The current regular expression is defined by the following grammar:

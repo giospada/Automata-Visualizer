@@ -1,5 +1,8 @@
-use crate::display::display_graph::DisplayGraph;
+use crate::display::DisplayGraph;
 
+
+/// this struct rappresent a visualizer of a graph
+/// it contains the information to show the window and display the graph
 pub struct Visualizer {
     pub box_title: String,
     pub graph: Option<DisplayGraph>,

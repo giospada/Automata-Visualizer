@@ -14,6 +14,7 @@ impl DisjointUnionFind {
         }
     }
 
+    // TODO: maybe should return an Result? 
     pub fn join(&mut self, a: usize, b: usize) -> () {
         let a = self.find(a);
         let b = self.find(b);
@@ -35,7 +36,7 @@ impl DisjointUnionFind {
 
         self.num_sets -= 1;
     }
-
+    // TODO: maybe should return a Result
     pub fn find(&mut self, a: usize) -> usize {
         if self.parent[a] >= 0 {
             self.parent[a] = self.find(self.parent[a] as usize) as i32;

@@ -2,8 +2,8 @@ use log::info;
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::automata::regular_expression as RE;
-use crate::display::display_graph::DisplayGraph;
-use crate::utils::graph::Graph;
+use crate::display::DisplayGraph;
+use crate::utils::Graph;
 
 #[derive(Debug)]
 pub struct NFA {
