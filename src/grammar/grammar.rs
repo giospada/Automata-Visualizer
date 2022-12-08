@@ -5,6 +5,7 @@ use crate::grammar::consts::{EPSILON, STRING_END};
 
 use super::item::Item;
 
+mod helper;
 mod semplification;
 
 pub type NonTerminal = usize;
@@ -193,15 +194,6 @@ impl Grammar {
         follow
     }
 
-    pub fn get_non_terminal(&self) -> BTreeSet<NonTerminal> {
-        let mut non_terminals = BTreeSet::new();
-        for production in self.productions.iter() {
-            non_terminals.insert(production.lhs);
-        }
-
-        non_terminals
-    }
-
     pub fn productions_to_adj_list(&self) -> BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> {
         let mut adj_list: BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> = BTreeMap::new();
         for production in self.productions.iter() {
@@ -257,6 +249,8 @@ impl<T> From<&DFA<T>> for Grammar {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::map;
+    use crate::automata::DFA;
 
     fn get_test_grammar() -> Grammar {
         // S -> Ab | c
@@ -314,5 +308,49 @@ mod test {
         let follow = grammar.follow(&1);
         assert_eq!(follow.len(), 1);
         assert!(follow.contains(&'b'));
+    }
+
+    #[test]
+    fn test_dfa_conversion() {
+        // this dfa should recognize ba*
+        let dfa: DFA<usize> = DFA::from_state(
+            3,
+            0, 
+            vec![1], 
+            vec![
+                map! { 
+                    'a' => 2,
+                    'b' => 1
+                },
+                map! { 
+                    'a' => 1,
+                    'b' => 2
+                },
+                map! { 
+                    'a' => 2,
+                    'b' => 2
+                },
+            ],            
+            None
+        );
+
+        let grammar = Grammar::from(&dfa);
+
+        // FIXME: the order in the production matters, but it shouldn't be the case.
+        let result = Grammar {
+            start_symbol: 0,
+            productions: vec![
+                Production { lhs: 0, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(2)] },
+                Production { lhs: 0, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(2)] },
+                Production { lhs: 2, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(2)] },
+                Production { lhs: 2, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(2)] },
+                Production { lhs: 1, rhs: vec![Letter::Terminal(EPSILON)] },
+            ],
+            nullable: None,
+        };
+
+        assert_eq!(grammar, result);
     }
 }
