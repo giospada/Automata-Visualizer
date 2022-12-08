@@ -56,7 +56,8 @@ impl Grammar {
 
         match letter {
             Letter::NonTerminal(non_terminal) => {
-                let mut first = self._first(non_terminal);
+                let mut used = vec![false; self.get_non_terminal().len()];
+                let mut first = self._first(non_terminal, &mut used);
 
                 if self.nullable.as_ref().unwrap().contains(&non_terminal) {
                     first.insert(EPSILON);
@@ -72,7 +73,12 @@ impl Grammar {
         }
     }
 
-    fn _first(&self, non_terminal: &NonTerminal) -> BTreeSet<Terminal> {
+    fn _first(&self, non_terminal: &NonTerminal, used: &mut Vec<bool>) -> BTreeSet<Terminal> {
+        if used[*non_terminal] == true {
+            return BTreeSet::new();
+        }
+        used[*non_terminal] = true;
+
         let nullable = self.nullable.as_ref().unwrap();
         let mut first = BTreeSet::new();
 
@@ -85,7 +91,7 @@ impl Grammar {
                 // we can continue to add more only if previous symbols are nullable
                 match letter {
                     Letter::NonTerminal(idx) => {
-                        first.append(&mut self._first(idx));
+                        first.append(&mut self._first(idx, used));
                         if !nullable.contains(idx) {
                             break;
                         }
@@ -111,16 +117,16 @@ impl Grammar {
         }
 
         let num_non_terminal = self.get_non_terminal().len();
-        let mut used = vec![0; num_non_terminal];
+        let mut used = vec![false; num_non_terminal];
 
         self._follow(non_terminal, &mut used)
     }
 
-    fn _follow(&self, non_terminal: &NonTerminal, used: &mut Vec<usize>) -> BTreeSet<Terminal> {
-        if used[*non_terminal] == 1 {
+    fn _follow(&self, non_terminal: &NonTerminal, used: &mut Vec<bool>) -> BTreeSet<Terminal> {
+        if used[*non_terminal] == true {
             return BTreeSet::new();
         }
-        used[*non_terminal] = 1;
+        used[*non_terminal] = true;
 
         let nullable = self.nullable.as_ref().unwrap();
         let mut follow = BTreeSet::new();
@@ -145,7 +151,8 @@ impl Grammar {
                             let next_letter = &production.rhs[i + 1];
                             match next_letter {
                                 Letter::NonTerminal(idx) => {
-                                    follow.append(&mut self._first(idx));
+                                    let mut first_used_table = vec![false; used.len()];
+                                    follow.append(&mut self._first(idx, &mut first_used_table));
                                 },
                                 Letter::Terminal(ch) => {
                                     follow.insert(*ch);
