@@ -3,7 +3,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::automata::nfa::NFA;
 use crate::automata::regular_expression as RE;
 use crate::utils::graph::{Graph, IndEdge, IndNode};
-use crate::automata::dfa::{DFA, NfaStates};
+use crate::automata::dfa::DFA;
+
+pub type NfaStates = BTreeSet<usize>;
 
 impl From<&NFA> for DFA<NfaStates> {
     fn from(nfa: &NFA) -> Self {

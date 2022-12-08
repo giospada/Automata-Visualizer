@@ -5,7 +5,6 @@ use crate::utils::DisjointUnionFind::DisjointUnionFind;
 mod canonical;
 mod from_into;
 
-pub type NfaStates = BTreeSet<usize>;
 
 #[derive(Debug, Clone)]
 pub struct DFA<T> {
