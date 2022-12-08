@@ -2,10 +2,24 @@ use std::error::Error;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use crate::display::display_graph::DisplayGraph;
 use crate::error::{InvalidCharacter, InvalidTokenError, UnvalidParentesis};
 use crate::utils::graph::{Graph, IndNode};
 
+/// Structure that represents a regular expression parse tree
+/// The current regular expression is defined by the following grammar:
+/// 
+/// ```text
+/// S -> A | S(* | S)
+/// 
+/// A -> [a-z] | [A-Z] | [0-9]
+/// ```
+/// 
+/// **NOTE**: 'ε' is considered as a special symbol
+/// it is not supported in this grammar, but is can be used as an 
+/// external symbol.
+/// 
+/// If we wanted to include 'ε' in the grammar, we would have 
+/// to accept strings like `|||` which is non-sensical.
 #[derive(Debug, Clone)]
 pub enum ReOperator {
     Char(char),
@@ -36,7 +50,7 @@ impl ReOperator {
     pub fn from_string(str: &String) -> Result<ReOperator, Box<dyn Error>> {
         let mut chars = str.chars().peekable();
         let mut num_parens = 0;
-        let res = parse_rec(&mut chars, &mut num_parens)?;
+        let res = Self::parse_rec(&mut chars, &mut num_parens)?;
 
         if num_parens != 0 {
             return Err(Box::new(UnvalidParentesis {}));
@@ -44,7 +58,8 @@ impl ReOperator {
 
         Ok(*res)
     }
-
+    
+    /// returns a character rapresentation of the Reoperator
     fn label(&self) -> String {
         match self {
             ReOperator::Char(c) => c.to_string(),
@@ -53,8 +68,9 @@ impl ReOperator {
             ReOperator::KleeneStar(_) => "*".to_string(),
         }
     }
-    fn childs(&self) -> Vec<&Self> {
-        match self {
+
+    fn childs(&self)->Vec<&Self>{
+        match self{
             ReOperator::Char(_) => Vec::new(),
             ReOperator::Concat(b1, b2) => vec![b1, b2],
             ReOperator::Or(b1, b2) => vec![b1, b2],
@@ -69,6 +85,202 @@ impl ReOperator {
         }
         top
     }
+
+
+    /// parse until closing parens or end of string
+    /// concatenation is left associative
+    /// or is right associative
+    /// kleene is an operation on a single character, or on parens.
+    /// 
+    /// this parser return the re operator of the **CURRENT SCOPE**
+    /// this means that if ((aaa)bbb), it returns the re operator for this
+    /// scope, which is (aaa)bbb, and it's called recursively on the scope of aaa
+    /// when it sees other scoping character.
+    /// 
+    /// Scoping caracters are ( and |, these two caracters are used to enter in new scope
+    /// the caracter ) is used to exit from the current scope.
+    fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<ReOperator>, Box<dyn Error>> {
+        if open_parens < &mut 0 {
+            return Err(Box::new(UnvalidParentesis {}));
+        }
+
+        let mut parse_tree = Self::elaborate_next_token(chars, None, open_parens)?;
+        let curr_parentesis = open_parens.clone();
+
+        while chars.peek().is_some() {
+            parse_tree = Self::elaborate_next_token(chars, Some(parse_tree), open_parens)?;
+
+            // this means that the recursive call has closed the parens
+            // so the scope of the current parentesis is over, and we should return.
+            if curr_parentesis > open_parens.clone() {
+                break;
+            }
+        }
+
+        Ok(parse_tree)
+    }
+
+    /// returns the re operator for a single token, described by the same grammar in [ReOperator]
+    fn elaborate_next_token(
+        chars: &mut Peekable<Chars>, 
+        mut tree: Option<Box<ReOperator>>, 
+        open_parens: &mut i32
+    ) -> Result<Box<ReOperator>, Box<dyn Error>> {
+        if chars.peek().is_none() {
+            if let Some(t) = tree {
+                return Ok(t);
+            } else {
+                return Err(Box::new(InvalidTokenError::new("Empty string is not accepted".to_string())));
+            }
+        }
+
+        let curr_char = chars.peek().unwrap();
+        if !Self::is_valid_char(*curr_char) {
+            return Err(Box::new(InvalidCharacter::new(*curr_char)));
+        } 
+        
+        if *curr_char == '(' {
+            chars.next();
+            *open_parens += 1;
+            let next_tree = Self::parse_rec(chars, open_parens)?;
+            
+            if chars.peek() == Some(&'*') {
+                chars.next();
+                if let Some(parse_tree) = tree {
+                    tree = Some(Box::new(ReOperator::Concat(parse_tree, 
+                        Box::new(ReOperator::KleeneStar(next_tree)))));
+                } else {
+                    tree = Some(Box::new(ReOperator::KleeneStar(next_tree)));
+                }
+            } else if let Some(parse_tree) = tree {
+                tree = Some(Box::new(ReOperator::Concat(parse_tree, next_tree)));
+            } else {
+                tree = Some(next_tree);
+            }
+        } else if *curr_char == '|' {
+            chars.next();
+            
+            if let Some(parse_tree) = tree {
+                // può ritornare solamente per ")" oppure fine stringa
+                let next_tree = Self::parse_rec(chars, open_parens)?;
+                tree = Some(Box::new(ReOperator::Or(parse_tree, next_tree)));
+            } else {
+                return Err(Box::new(InvalidTokenError::new(
+                    "Invalid token, cannot begin with |".to_string(),
+                )));
+            }
+        } else if *curr_char == ')' {
+            chars.next();
+            *open_parens -= 1;
+        } else {
+            let token = Self::get_next_token(chars)?;
+
+            // quando è vuoto vuol dire che il prossimo carattere è (, ), | o
+            // fine stringa, quindi non devo fare nulla, lo gestisco alla prossima iterazione.
+            if token.len() > 0 {
+                let next_tree = Self::parse_token(token)?;
+
+                if let Some(parse_tree) = tree {
+                    tree = Some(Box::new(ReOperator::Concat(parse_tree, next_tree)));
+                } else {
+                    tree = Some(next_tree);
+                }
+            }
+        }
+
+        if let Some(parse_tree) = tree {
+            Ok(parse_tree)
+        } else {
+            Err(Box::new(InvalidTokenError::new(
+                "Empty token Error".to_string(),
+            )))
+        }
+    }
+
+    /// this function returns the next token in the regexp, and advances the chars iterator accordingly
+    /// 
+    /// remember that a token is described by the same grammar of [ReOperator]
+    fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>> {
+        let mut token = String::new();
+
+        while chars.peek().is_some() && chars.peek().unwrap() != &'|' &&
+            chars.peek().unwrap() != &')' && chars.peek().unwrap() != &'(' {
+            let ch = chars.next().unwrap();
+
+            if !Self::is_valid_char(ch) {
+                return Err(Box::new(InvalidTokenError::new(
+                    "Invalid character in token".to_string(),
+                )));
+            }
+            token.push(ch);
+        }
+
+        Ok(token)
+    }
+
+    /// token is a valid regular expression without parenthesis nor Or operator
+    /// Described by the following grammar in [ReOperator]
+    fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
+        if token.len() == 0 {
+            return Err(Box::new(InvalidTokenError::new("Empty token".to_string())));
+        } else if token.starts_with("*") {
+            return Err(Box::new(InvalidTokenError::new("token can't start with *".to_string())));
+        }
+
+        let mut chars = token.chars().peekable();
+        let mut tree_top = Self::get_next_node(&mut chars)?;
+        
+        while chars.peek().is_some() {
+            tree_top = Box::new(ReOperator::Concat(tree_top, Self::get_next_node(&mut chars)?));
+        }
+
+        Ok(tree_top)
+    }
+
+    /// a node is defined as a single character in the regexp alfabet or couple `<char, kleene star>`
+    /// this function returns the next node in the regexp, and advances the chars iterator accordingly
+    /// 
+    /// *Example*:
+    /// 
+    /// if chars is a, b, *
+    /// when it's it just returns a node with label a
+    /// 
+    /// when it's at b it returns a correct box operator with label * and b as child
+    /// 
+    fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
+        let curr_char = chars.next().unwrap();
+        if !Self::is_valid_char(curr_char) {
+            return Err(Box::new(InvalidCharacter::new(curr_char)));
+        }
+
+        match curr_char {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                if chars.peek() == Some(&'*') {
+                    chars.next();
+                    return Ok(Box::new(ReOperator::KleeneStar(Box::new(ReOperator::Char(curr_char)))));
+                } else {
+                    return Ok(Box::new(ReOperator::Char(curr_char)));
+                }
+            }
+            '*' => {
+                return Err(Box::new(InvalidTokenError::new(
+                    "cannot have Kleene star without valid alphabet char".to_string(),
+                )));
+            }
+            _ => {
+                return Err(Box::new(InvalidTokenError::new(
+                    "Invalid character, only ([a-z]|[A-Z]|[0-9]|\\*)* is accepted".to_string(),
+                )));
+            }
+        }
+    }
+
+    /// check if the character is valid for the regexp
+    /// a character is valid when it satysfies the A non terminal described in [ReOperator]
+    /// and special characters like (, ), |, *
+    fn is_valid_char(c: char) -> bool {
+        c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
+    }
 }
 
 impl Into<Graph> for ReOperator {
@@ -79,215 +291,6 @@ impl Into<Graph> for ReOperator {
     }
 }
 
-/// parse until closing parens or end of string
-/// concatenation is left associative
-/// or is right associative
-/// kleene is an operation on a single character, or on parens.
-
-/// 
-/// this parser return the re operator of the CURRENT SCOPE
-/// this means that if ((aaa)bbb), it returns the re operator for this
-/// scope, which is (aaa)bbb, and it's called recursively on the scope of aaa
-/// when it sees other scoping character.
-/// 
-/// Scoping caracters are ( and |, these two caracters are used to enter in new scope
-/// the caracter ) is used to exit from the current scope.
-fn parse_rec(chars: &mut Peekable<Chars>, open_parens: &mut i32) -> Result<Box<ReOperator>, Box<dyn Error>> {
-    if open_parens < &mut 0 {
-        return Err(Box::new(UnvalidParentesis {}));
-    }
-
-    let mut parse_tree = elaborate_next_token(chars, None, open_parens)?;
-    let curr_parentesis = open_parens.clone();
-
-    while chars.peek().is_some() {
-        parse_tree = elaborate_next_token(chars, Some(parse_tree), open_parens)?;
-
-        // this means that the recursive call has closed the parens
-        // so the scope of the current parentesis is over, and we should return.
-        if curr_parentesis > open_parens.clone() {
-            break;
-        }
-    }
-
-    Ok(parse_tree)
-}
-
-
-/// returns the re operator for a single token, described by the same grammar in [parse_token]
-fn elaborate_next_token(
-    chars: &mut Peekable<Chars>, 
-    mut tree: Option<Box<ReOperator>>, 
-    open_parens: &mut i32
-) -> Result<Box<ReOperator>, Box<dyn Error>> {
-    if chars.peek().is_none() {
-        if let Some(t) = tree {
-            return Ok(t);
-        } else {
-            return Err(Box::new(InvalidTokenError::new(
-                "Empty string is not accepted".to_string(),
-            )));
-        }
-    }
-
-    let curr_char = chars.peek().unwrap();
-    if !is_valid_char(*curr_char) {
-        return Err(Box::new(InvalidCharacter::new(*curr_char)));
-    }
-
-    if *curr_char == '(' {
-        chars.next();
-        *open_parens += 1;
-        let next_tree = parse_rec(chars, open_parens)?;
-
-        if chars.peek() == Some(&'*') {
-            chars.next();
-            if let Some(parse_tree) = tree {
-                tree = Some(Box::new(ReOperator::Concat(
-                    parse_tree,
-                    Box::new(ReOperator::KleeneStar(next_tree)),
-                )));
-            } else {
-                tree = Some(Box::new(ReOperator::KleeneStar(next_tree)));
-            }
-        } else if let Some(parse_tree) = tree {
-            tree = Some(Box::new(ReOperator::Concat(parse_tree, next_tree)));
-        } else {
-            tree = Some(next_tree);
-        }
-    } else if *curr_char == '|' {
-        chars.next();
-
-        if let Some(parse_tree) = tree {
-            // può ritornare solamente per ")" oppure fine stringa
-            let next_tree = parse_rec(chars, open_parens)?;
-            tree = Some(Box::new(ReOperator::Or(parse_tree, next_tree)));
-        } else {
-            return Err(Box::new(InvalidTokenError::new(
-                "Invalid token, cannot begin with |".to_string(),
-            )));
-        }
-    } else if *curr_char == ')' {
-        chars.next();
-        *open_parens -= 1;
-    } else {
-        let token = get_next_token(chars)?;
-
-        // quando è vuoto vuol dire che il prossimo carattere è (, ), | o
-        // fine stringa, quindi non devo fare nulla, lo gestisco alla prossima iterazione.
-        if token.len() > 0 {
-            let next_tree = parse_token(token)?;
-
-            if let Some(parse_tree) = tree {
-                tree = Some(Box::new(ReOperator::Concat(parse_tree, next_tree)));
-            } else {
-                tree = Some(next_tree);
-            }
-        }
-    }
-
-    if let Some(parse_tree) = tree {
-        Ok(parse_tree)
-    } else {
-        Err(Box::new(InvalidTokenError::new(
-            "Empty token Error".to_string(),
-        )))
-    }
-}
-
-/// this function returns the next token in the regexp, and advances the chars iterator accordingly
-/// 
-/// remember that a token is described by the same grammar of [parse_token]
-fn get_next_token(chars: &mut Peekable<Chars>) -> Result<String, Box<dyn Error>> {
-    let mut token = String::new();
-
-    while chars.peek().is_some() && chars.peek().unwrap() != &'|' &&
-        chars.peek().unwrap() != &')' && chars.peek().unwrap() != &'(' {
-        let ch = chars.next().unwrap();
-
-        if !is_valid_char(ch) {
-            return Err(Box::new(InvalidTokenError::new(
-                "Invalid character in token".to_string(),
-            )));
-        }
-        token.push(ch);
-    }
-
-    Ok(token)
-}
-
-/// token is a valid regular expression without parenthesis nor Or operator
-/// Described by the following grammar:
-/// 
-/// S -> ε | A | S(* | S)
-/// 
-/// A -> [a-z] | [A-Z] | [0-9]
-/// 
-fn parse_token(token: String) -> Result<Box<ReOperator>, Box<dyn Error>> {
-    if token.len() == 0 {
-        return Err(Box::new(InvalidTokenError::new("Empty token".to_string())));
-    } else if token.starts_with("*") {
-        return Err(Box::new(InvalidTokenError::new(
-            "token can't start with *".to_string(),
-        )));
-    }
-
-    let mut chars = token.chars().peekable();
-    let mut tree_top = get_next_node(&mut chars)?;
-
-    while chars.peek().is_some() {
-        tree_top = Box::new(ReOperator::Concat(tree_top, get_next_node(&mut chars)?));
-    }
-
-    Ok(tree_top)
-}
-
-/// a node is defined as a single character in the regexp alfabet or couple <char, kleene star>
-/// this function returns the next node in the regexp, and advances the chars iterator accordingly
-/// 
-/// example:
-/// 
-/// if chars is a, b, *
-/// when it's it just returns a node with label a
-/// 
-/// when it's at b it returns a correct box operator with label * and b as child
-/// 
-fn get_next_node(chars: &mut Peekable<Chars>) -> Result<Box<ReOperator>, Box<dyn Error>> {
-    let curr_char = chars.next().unwrap();
-    if !is_valid_char(curr_char) {
-        return Err(Box::new(InvalidCharacter::new(curr_char)));
-    }
-
-    match curr_char {
-        'a'..='z' | 'A'..='Z' | '0'..='9' => {
-            if chars.peek() == Some(&'*') {
-                chars.next();
-                return Ok(Box::new(ReOperator::KleeneStar(Box::new(
-                    ReOperator::Char(curr_char),
-                ))));
-            } else {
-                return Ok(Box::new(ReOperator::Char(curr_char)));
-            }
-        }
-        '*' => {
-            return Err(Box::new(InvalidTokenError::new(
-                "cannot have Kleene star without valid alphabet char".to_string(),
-            )));
-        }
-        _ => {
-            return Err(Box::new(InvalidTokenError::new(
-                "Invalid character, only ([a-z]|[A-Z]|[0-9]|\\*)* is accepted".to_string(),
-            )));
-        }
-    }
-}
-
-
-
-fn is_valid_char(c: char) -> bool {
-    c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '|' || c == '*' || c == '(' || c == ')'
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -296,28 +299,28 @@ mod test {
         #[test]
         fn only_char() {
             let mut chars = "aaaa".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
+            let token = ReOperator::get_next_token(&mut chars).unwrap();
             assert_eq!(token, "aaaa");
         }
 
         #[test]
         fn with_star_and_or() {
             let mut chars = "aa|b*".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
+            let token = ReOperator::get_next_token(&mut chars).unwrap();
             assert_eq!(token, "aa");
         }
 
         #[test]
         fn with_parenthesis() {
             let mut chars = "aaa(a|b*)".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
+            let token = ReOperator::get_next_token(&mut chars).unwrap();
             assert_eq!(token, "aaa");
         }
 
         #[test]
         fn begin_parens() {
             let mut chars = "(a|b*)".chars().peekable();
-            let token = get_next_token(&mut chars).unwrap();
+            let token = ReOperator::get_next_token(&mut chars).unwrap();
             assert_eq!(token, "");
         }
     }
@@ -328,7 +331,7 @@ mod test {
         #[test]
         fn only_char() {
             let token = "aaaa".to_string();
-            let tree = parse_token(token).unwrap();
+            let tree = ReOperator::parse_token(token).unwrap();
 
             // this should be
             // a
@@ -359,7 +362,7 @@ mod test {
         #[test]
         fn kleene_star() {
             let token = "da*b".to_string();
-            let tree = parse_token(token).unwrap();
+            let tree = ReOperator::parse_token(token).unwrap();
 
             // this should be
             // d  a
@@ -386,7 +389,7 @@ mod test {
         #[test]
         fn error_double_star() {
             let token = "ab**c".to_string();
-            let tree = parse_token(token);
+            let tree = ReOperator::parse_token(token);
             assert!(tree.is_err());
         }
     }
