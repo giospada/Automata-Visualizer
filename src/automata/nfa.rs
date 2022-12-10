@@ -5,6 +5,8 @@ use crate::automata::regular_expression as RE;
 use crate::display::DisplayGraph;
 use crate::utils::Graph;
 
+mod from_string;
+
 #[derive(Debug)]
 pub struct NFA {
     start_state: usize,
