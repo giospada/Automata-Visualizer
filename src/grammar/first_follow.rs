@@ -16,6 +16,9 @@ pub struct FirstFollow {
 }
 
 impl FirstFollow {
+    /// Create a new FirstFollow struct, it is important that 
+    /// this is not public, as we want to only expose valid istantiations
+    /// of the first follow table.
     fn new(non_non_terminals: usize) -> Self {
         FirstFollow {
             first_table: None,
@@ -89,8 +92,8 @@ impl FirstFollow {
                     }
                 }
                 Letter::Terminal(ch) => {
-                    has_changed |= self.first_table.as_mut().unwrap()[production.lhs].insert(*ch);
                     if *ch != EPSILON {
+                        has_changed |= self.first_table.as_mut().unwrap()[production.lhs].insert(*ch);
                         break;
                     }
                 }
@@ -226,7 +229,7 @@ mod test {
 
     #[test]
     fn test_first() {
-        let mut grammar = get_test_grammar();
+        let grammar = get_test_grammar();
 
         let first_follow = FirstFollow::from(&grammar);
         let first = first_follow.get_first(&Letter::NonTerminal(0));
@@ -235,11 +238,16 @@ mod test {
         assert!(first.contains(&'a'));
         assert!(first.contains(&'b'));
         assert!(first.contains(&'c'));
+
+        let first = first_follow.get_first(&Letter::NonTerminal(1));
+        assert_eq!(first.len(), 2);
+        assert!(first.contains(&'a'));
+        assert!(first.contains(&EPSILON));
     }
 
     #[test]
     fn test_first_cycle() {
-        let mut grammar = Grammar::new(
+        let grammar = Grammar::new(
             0,
             vec![
                 Production { lhs: 0, rhs: vec![Letter::NonTerminal(1)] },
@@ -256,7 +264,7 @@ mod test {
 
     #[test]
     fn test_follow() {
-        let mut grammar = get_test_grammar();
+        let grammar = get_test_grammar();
         let first_follow = FirstFollow::from(&grammar);
 
         let follow = first_follow.get_follow(0);
