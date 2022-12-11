@@ -238,28 +238,28 @@ impl<T> From<&DFA<T>> for Grammar {
     }
 }
 
+pub fn get_test_grammar() -> Grammar {
+    // S -> Ab | c
+    // A -> aA | ε
+    // S = 0
+    // A = 1
+    Grammar {
+        start_symbol: 0,
+        productions: vec![
+            Production { lhs: 0, rhs: vec![Letter::NonTerminal(1), Letter::Terminal('b')] },
+            Production { lhs: 0, rhs: vec![Letter::Terminal('c')] },
+            Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1)] },
+            Production { lhs: 1, rhs: vec![Letter::Terminal(EPSILON)] },
+        ],
+        nullable: None,
+    }
+}
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::map;
     use crate::automata::DFA;
 
-    fn get_test_grammar() -> Grammar {
-        // S -> Ab | c
-        // A -> aA | ε
-        // S = 0
-        // A = 1
-        Grammar {
-            start_symbol: 0,
-            productions: vec![
-                Production { lhs: 0, rhs: vec![Letter::NonTerminal(1), Letter::Terminal('b')] },
-                Production { lhs: 0, rhs: vec![Letter::Terminal('c')] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1)] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal(EPSILON)] },
-            ],
-            nullable: None,
-        }
-    }
 
     #[test]
     fn test_first() {
