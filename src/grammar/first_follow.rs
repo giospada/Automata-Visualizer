@@ -228,7 +228,8 @@ mod test {
     fn test_first() {
         let mut grammar = get_test_grammar();
 
-        let first = grammar.first(&Letter::NonTerminal(0));
+        let first_follow = FirstFollow::from(&grammar);
+        let first = first_follow.get_first(&Letter::NonTerminal(0));
 
         assert_eq!(first.len(), 3);
         assert!(first.contains(&'a'));
@@ -246,7 +247,9 @@ mod test {
             ],
         );
 
-        let first = grammar.first(&Letter::NonTerminal(0));
+
+        let first_follow = FirstFollow::from(&grammar);
+        let first = first_follow.get_first(&Letter::NonTerminal(0));
 
         assert_eq!(first.len(), 0);
     }
@@ -254,12 +257,13 @@ mod test {
     #[test]
     fn test_follow() {
         let mut grammar = get_test_grammar();
+        let first_follow = FirstFollow::from(&grammar);
 
-        let follow = grammar.follow(&0);
+        let follow = first_follow.get_follow(0);
         assert_eq!(follow.len(), 1);
         assert!(follow.contains(&STRING_END));
 
-        let follow = grammar.follow(&1);
+        let follow = first_follow.get_follow(1);
         assert_eq!(follow.len(), 1);
         assert!(follow.contains(&'b'));
     }
