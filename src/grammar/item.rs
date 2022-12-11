@@ -1,7 +1,7 @@
 use std::collections::{BTreeSet, BTreeMap, VecDeque};
 
-use crate::grammar::grammar::{Grammar, Letter, Terminal, NonTerminal, Production};
-use crate::grammar::consts::{EPSILON, ITEM_SEP};
+use crate::grammar::{Grammar, Letter, Production};
+use crate::grammar::consts::{EPSILON, ITEM_SEP, Terminal, NonTerminal};
 
 use super::consts::STRING_END;
 
@@ -71,32 +71,39 @@ impl Item {
     ) -> BTreeSet<Item> {
         let mut closure_items = (*items).clone();
         let mut used_non_term = vec![false; grammar.get_non_terminal().len()];
-        let mut non_terminals = Self::compute_closure_queue(items, &mut used_non_term);
-        
         let dot_production = Self::add_initial_sep(grammar.productions_to_adj_list());
 
-        // apply the closure to all the non terminals in non_terminals
-        while let Some((non_terminal, letter_first)) = non_terminals.pop_front() {
+        // the non terminals to explore are seen as a BFS that expands to other non terminals
+        // when it sees an arc (e.g. a non terminal after a SEP).
+        let mut closure_queue = Self::compute_closure_queue(items, &mut used_non_term);
+
+        // apply the closure to all the non terminals in closure_queue
+        while let Some((non_terminal, letter_first)) = closure_queue.pop_front() {
             dot_production.get(&non_terminal)
             .unwrap()
             .iter()
             .for_each(|rhs| {
                 // with dot_production, the dot is always at 0, so the first letter is 1
-                if rhs.len() >= 2 {
-                    let letter = &rhs[1];
-    
-                    if let Letter::NonTerminal(non_term) = letter {
-                        if !used_non_term[*non_term as usize] {
-                            used_non_term[*non_term as usize] = true;
+                let (non_term_opt, look_ahead) = Self::get_next_closure_non_term(rhs);
 
-                            if rhs.len() >= 3 {
-                                non_terminals.push_back((*non_term, Some(rhs[2].clone())));
-                            } else {
-                                non_terminals.push_back((*non_term, None));
+                match non_term_opt {
+                    Some(non_term) => {
+                        if !used_non_term[non_term] {
+                            used_non_term[non_term] = true;
+
+                            match look_ahead {
+                                Some(_) => {
+                                    if let None = letter_first {
+                                        closure_queue.push_back((non_term, None));
+                                    } else {
+                                        closure_queue.push_back((non_term, look_ahead))
+                                    }
+                                },
+                                None => closure_queue.push_back((non_term, None)),
                             }
                         }
                     }
-
+                    None => {}
                 }
 
                 let production = Production {
@@ -164,7 +171,25 @@ impl Item {
             });
 
             non_terminals
+    }
+
+    /// this function assumes the dot is at the beginning of the production
+    /// and returns the non terminal after the dot, with the look ahead letter,
+    /// if there is one.
+    fn get_next_closure_non_term(rhs: &Vec<Letter>) -> (Option<NonTerminal>, Option<Letter>) {
+        let first_non_term = Production::get_nth_if_non_terminal(rhs, 1);
+        let second_letter = Production::get_nth(rhs, 2);
+
+        match first_non_term {
+            Some(non_term) => {
+                match second_letter {
+                    Some(letter) => (Some(*non_term), Some(letter.clone())),
+                    None => (Some(*non_term), None),
+                }
+            }
+            None => (None, None),
         }
+    }
 
     pub fn goto(items: &BTreeSet<Item>, letter: &Letter) -> BTreeSet<Item> {
         let mut goto_items: BTreeSet<Item> = BTreeSet::new();

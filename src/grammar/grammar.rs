@@ -1,27 +1,19 @@
 use std::collections::{BTreeSet, BTreeMap};
 
 use crate::automata::DFA;
-use crate::grammar::consts::{EPSILON, STRING_END};
-
-use super::item::Item;
+use crate::grammar::{
+    Production,
+    Letter
+};
+use crate::grammar::consts::{
+    EPSILON, 
+    STRING_END,
+    Terminal,
+    NonTerminal,
+};
 
 mod helper;
 mod semplification;
-
-pub type NonTerminal = usize;
-pub type Terminal = char;
-
-#[derive(Debug, PartialEq, Clone, PartialOrd, Eq, Ord)]
-pub enum Letter {
-    NonTerminal(NonTerminal),
-    Terminal(Terminal),
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub struct Production {
-    pub lhs: NonTerminal,
-    pub rhs: Vec<Letter>,
-}
 
 #[derive(Debug, PartialEq)]
 pub struct Grammar {
