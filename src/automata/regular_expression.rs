@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 use crate::error::{InvalidCharacter, InvalidTokenError, UnvalidParentesis};
-use crate::utils::{Graph, IndNode};
+use crate::utils::{Graph, IndNode, IntoGraph};
 
 /// Structure that represents a regular expression parse tree
 /// The current regular expression is defined by the following grammar:
@@ -283,8 +283,8 @@ impl ReOperator {
     }
 }
 
-impl Into<Graph> for ReOperator {
-    fn into(self) -> Graph {
+impl IntoGraph for ReOperator {
+    fn into_graph(&self) -> Graph {
         let mut graph= Graph::new();
         self.build_recursive_graph(&mut graph);
         graph

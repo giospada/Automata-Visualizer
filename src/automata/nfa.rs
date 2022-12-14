@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::automata::regular_expression as RE;
 use crate::display::DisplayGraph;
-use crate::utils::Graph;
+use crate::utils::{Graph, IntoGraph};
 
 mod from_string;
 
@@ -215,8 +215,8 @@ impl From<&RE::ReOperator> for NFA {
     }
 }
 
-impl Into<Graph> for NFA {
-    fn into(self) -> Graph {
+impl IntoGraph for NFA {
+    fn into_graph(&self) -> Graph {
         let mut graph = Graph::new();
 
         let finals_nodes = self

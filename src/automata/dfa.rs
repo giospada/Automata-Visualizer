@@ -5,7 +5,7 @@ use crate::automata::regular_expression as RE;
 use crate::utils::{Graph, IndEdge, IndNode};
 use crate::utils::DisjointUnionFind;
 
-type NfaStates = BTreeSet<usize>;
+pub type NfaStates = BTreeSet<usize>;
 
 #[derive(Debug, Clone)]
 pub struct DFA<T> {
@@ -276,8 +276,8 @@ impl From<&RE::ReOperator> for DFA<NfaStates> {
     }
 }
 
-impl<T> Into<Graph> for DFA<T> {
-    fn into(self) -> Graph {
+impl<T> IntoGraph for DFA<T> {
+    fn into_graph(&self) -> Graph {
         let mut graph = Graph::new();
 
         let finals_nodes = self

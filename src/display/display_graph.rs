@@ -13,6 +13,7 @@ const COLOR_NODES: Color32 = Color32::WHITE;
 const COLOR_LABEL_EDGE: Color32 = Color32::GRAY;
 const COLOR_LABEL_NODE: Color32 = Color32::BLACK;
 
+
 /// Rapresent the edges types
 pub enum EdgeType {
     /// the edge point to it's self
@@ -349,3 +350,4 @@ impl DisplayGraph {
         self.draw_nodes(painter, to_screen, ui);
     }
 }
+
