@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::automata::NFA;
 use crate::automata::regular_expression as RE;
+use crate::utils::IntoGraph;
 use crate::utils::{Graph, IndEdge, IndNode};
 use crate::utils::DisjointUnionFind;
 

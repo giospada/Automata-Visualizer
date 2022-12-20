@@ -28,6 +28,14 @@ pub enum ReOperator {
     KleeneStar(Box<ReOperator>),
 }
 
+impl IntoGraph for ReOperator {
+    fn into_graph(&self) -> Graph {
+        let mut graph= Graph::new();
+        self.build_recursive_graph(&mut graph);
+        graph
+    }
+}
+
 impl PartialEq for ReOperator {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -283,13 +291,6 @@ impl ReOperator {
     }
 }
 
-impl IntoGraph for ReOperator {
-    fn into_graph(&self) -> Graph {
-        let mut graph= Graph::new();
-        self.build_recursive_graph(&mut graph);
-        graph
-    }
-}
 
 #[cfg(test)]
 mod test {

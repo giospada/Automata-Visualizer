@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-
 use super::NFA;
 
+//TODO rifare tutto con strade
 use nom::{
     bytes::complete::take,
     bytes::complete::take_while1,
@@ -15,13 +15,12 @@ use nom::{
     IResult,
 };
 
-fn decimal(input: &str) -> IResult<&str, &str> {
-    take_while1(move |c: char| c.is_digit(10))(input)
-}
+const START_STATE_LABEL:&str= "start_state";
+const NUM_STATE_LABEL:&str= "num_states";
+const END_STATES_LABEL:&str= "end_states";
+const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
-fn str_to_usize(input: &str) -> Result<usize, std::num::ParseIntError> {
-    usize::from_str_radix(input, 10)
-}
+
 
 fn read_num(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |digit_str: &str| digit_str.parse::<usize>())(input)
@@ -34,13 +33,12 @@ fn custom_label<'a>(
 }
 
 fn read_start_stete(input: &str) -> IResult<&str, usize> {
-    preceded(custom_label("start_state"), read_num)(input)
+    preceded(custom_label(START_STATE_LABEL), read_num)(input)
 }
 fn read_num_states(input: &str) -> IResult<&str, usize> {
-    preceded(custom_label("num_states"), read_num)(input)
+    preceded(custom_label(NUM_STATE_LABEL), read_num)(input)
 }
 
-const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
 fn read_char(input: &str) -> IResult<&str, char> {
     preceded(
@@ -58,7 +56,7 @@ fn read_num_array(input: &str) -> IResult<&str, Vec<usize>> {
 }
 
 fn read_finish_states(input: &str) -> IResult<&str, Vec<usize>> {
-    preceded(custom_label("num_states"), read_num_array)(input)
+    preceded(custom_label(END_STATES_LABEL), read_num_array)(input)
 }
 
 fn read_transiction(input: &str) -> IResult<&str, (usize, usize, char)> {
@@ -75,6 +73,7 @@ fn read_all_transictions(input: &str) -> IResult<&str, Vec<(usize, usize, char)>
     separated_list0(multispace0, read_transiction)(input)
 }
 
+
 impl TryFrom<&str> for NFA {
     // TODO: maybe we can change it
     type Error = String;
@@ -87,30 +86,31 @@ impl TryFrom<&str> for NFA {
             read_all_transictions,
         ))(value);
 
-        if let Ok((input, (start_state, end_states, num_states, all_transitions))) = out {
-            let mut transitions: Vec<BTreeMap<char, Vec<usize>>> =
-                (0..num_states).map(|_| BTreeMap::new()).collect();
-            for (from, to, ch) in all_transitions.into_iter() {
-                if from >= num_states {
-                    return Err(String::from("from out of num_state"));
-                } else if to >= num_states {
-                    return Err(String::from("to out of num_state"));
-                } else {
-                    transitions[from]
-                        .entry(ch)
-                        .and_modify(|x| x.push(to))
-                        .or_insert(vec![to]);
+        match out {
+            Ok((_, (start_state, end_states, num_states, all_transitions))) => {
+                let mut transitions: Vec<BTreeMap<char, Vec<usize>>> =
+                    (0..num_states).map(|_| BTreeMap::new()).collect();
+                for (from, to, ch) in all_transitions.into_iter() {
+                    if from >= num_states {
+                        return Err(String::from("from out of num_state"));
+                    } else if to >= num_states {
+                        return Err(String::from("to out of num_state"));
+                    } else {
+                        transitions[from]
+                            .entry(ch)
+                            .and_modify(|x| x.push(to))
+                            .or_insert(vec![to]);
+                    }
                 }
+                Ok(Self {
+                    start_state,
+                    num_states,
+                    end_states,
+                    transitions,
+                    used_alphabet: ALPHABET.chars().collect(),
+                })
             }
-            Ok(Self {
-                start_state,
-                num_states,
-                end_states,
-                transitions,
-                used_alphabet: ALPHABET.chars().collect(),
-            })
-        } else {
-            Err(String::from("error while reading nfa"))
+            Err(e) => Err(e.to_string()),
         }
     }
 }
@@ -122,7 +122,7 @@ mod test {
     #[test]
     fn string_to_nfa() {
         //todo
-        NFA::try_from(concat!(
+        if let Ok(_) = NFA::try_from(concat!(
             "start_state: 0\n",
             "finish_states: [ 2 ]\n",
             " num_states: 5\n",
@@ -132,7 +132,10 @@ mod test {
             "3 -- 'a' --> 4\n",
             "4 ----> 3\n",
             "4 ----> 2\n"
-        ));
+        )) {
+        } else {
+            assert!(false);
+        }
     }
 
     #[test]

@@ -1,13 +1,15 @@
 use log::info;
 use std::collections::{BTreeMap, BTreeSet};
+use serde::{Serialize, Deserialize};
+
 
 use crate::automata::regular_expression as RE;
 use crate::display::DisplayGraph;
 use crate::utils::{Graph, IntoGraph};
 
-mod from_string;
+mod string_transform;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NFA {
     start_state: usize,
     num_states: usize,
@@ -266,6 +268,7 @@ mod test {
             Box::new(RE::ReOperator::Char('b')),
         );
         let nfa = NFA::from(&regex);
-        println!("{:?}", nfa);
+        let out = serde_json::to_string(&nfa);
+        panic!("{:?}\n", out.unwrap());
     }
 }

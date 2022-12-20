@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use egui::{emath, Frame, Pos2, Rect, Ui, Window};
 
-use crate::{display::DisplayGraph };
+use crate::display::DisplayGraph;
 
 use super::DisplayGraphParameter;
 use crate::display::RegularGrammarObjects;
@@ -11,14 +11,12 @@ use crate::display::RegularGrammarObjects;
 /// it contains the information to show the window and display the graph
 
 // if Return a String it return an error
-type FromFunction = Box<
-    dyn Fn(
-        &mut Ui,
-        &mut RegularGrammarObjects,
-        &mut String,
-        &mut VecDeque<String>
-    ) -> Option<DisplayGraph>,
->;
+type FromFunction = fn(
+    &mut Ui,
+    &mut RegularGrammarObjects,
+    &mut String,
+    &mut VecDeque<String>,
+) -> Option<DisplayGraph>;
 
 pub struct Visualizer {
     pub box_title: String,
@@ -51,10 +49,11 @@ impl Visualizer {
         other_obj: &mut RegularGrammarObjects,
         error_log: &mut VecDeque<String>,
     ) {
-        ui.heading(self.box_title);
+        ui.heading(self.box_title.clone());
         for fun in self.from.iter() {
-            if let Some(res) = fun(ui, &mut other_obj, &mut self.from_input_string,&mut error_log) {
+            if let Some(res) = fun(ui, other_obj, &mut self.from_input_string, error_log) {
                 self.graph = Some(res);
+                self.is_win_open = true;
             }
         }
     }
@@ -68,11 +67,6 @@ impl Visualizer {
         }
     }
 
-    pub fn set_graph(&mut self, graph: DisplayGraph) {
-        self.graph = Some(graph);
-        self.is_win_open = true;
-    }
-
     fn display_parameters(display_parameters: &mut DisplayGraphParameter, ui: &mut Ui) {
         let par = display_parameters;
         ui.collapsing(format!("visualizer option",), |ui| {
@@ -83,23 +77,24 @@ impl Visualizer {
     }
 
     fn display_graph(
-        graph: &mut DisplayGraph,
+        graph: &mut Option<DisplayGraph>,
         display_parameters: DisplayGraphParameter,
         ui: &mut Ui,
     ) {
         Frame::canvas(ui.style()).show(ui, |canvas_ui| {
-            if let Some(tree) = &mut graph {
+            if let Some(tree) = graph {
                 let scren_size = tree.position(display_parameters);
-                let (mut response, painter) = ui.allocate_painter(scren_size, egui::Sense::hover());
+                let (mut response, painter) =
+                    canvas_ui.allocate_painter(scren_size, egui::Sense::hover());
 
                 let to_screen = emath::RectTransform::from_to(
                     Rect::from_min_size(Pos2::ZERO, response.rect.size()),
                     response.rect,
                 );
-                tree.drag_nodes(to_screen, ui, &mut response);
-                tree.draw(&painter, to_screen, &ui);
+                tree.drag_nodes(to_screen, canvas_ui, &mut response);
+                tree.draw(&painter, to_screen, canvas_ui);
             }
-        })
+        });
     }
 
     pub fn display_visualization(&mut self, ctx: &egui::Context) {
