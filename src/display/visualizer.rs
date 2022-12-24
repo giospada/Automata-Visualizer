@@ -11,7 +11,7 @@ use crate::display::RegularGrammarObjects;
 /// it contains the information to show the window and display the graph
 
 // if Return a String it return an error
-type FromFunction = fn(
+pub type FromFunction = fn(
     &mut Ui,
     &mut RegularGrammarObjects,
     &mut String,
