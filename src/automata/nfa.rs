@@ -1,11 +1,15 @@
 use log::info;
 use std::collections::{BTreeMap, BTreeSet};
+use serde::{Serialize, Deserialize};
+
 
 use crate::automata::regular_expression as RE;
 use crate::display::DisplayGraph;
-use crate::utils::Graph;
+use crate::utils::{Graph, IntoGraph};
 
-#[derive(Debug)]
+mod string_transform;
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NFA {
     start_state: usize,
     num_states: usize,
@@ -213,8 +217,8 @@ impl From<&RE::ReOperator> for NFA {
     }
 }
 
-impl Into<Graph> for NFA {
-    fn into(self) -> Graph {
+impl IntoGraph for NFA {
+    fn into_graph(&self) -> Graph {
         let mut graph = Graph::new();
 
         let finals_nodes = self
@@ -264,6 +268,7 @@ mod test {
             Box::new(RE::ReOperator::Char('b')),
         );
         let nfa = NFA::from(&regex);
-        println!("{:?}", nfa);
+        let out = serde_json::to_string(&nfa);
+        panic!("{:?}\n", out.unwrap());
     }
 }
