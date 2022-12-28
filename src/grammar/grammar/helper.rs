@@ -1,14 +1,14 @@
 /// This file contains some general helper functions used
 /// To implement grammar semplification and first and follows
-use std::collections::{BTreeSet};
+use std::collections::BTreeSet;
 
-use super::{Grammar, NonTerminal, Letter, EPSILON};
+use super::{Grammar, Letter, NonTerminal, Production, EPSILON};
 
 impl Grammar {
     pub fn get_non_terminal(&self) -> BTreeSet<NonTerminal> {
         let mut non_terminals = BTreeSet::new();
         for production in self.productions.iter() {
-            non_terminals.insert(production.lhs);
+            non_terminals.insert(production.start_symbol);
         }
 
         non_terminals
@@ -20,30 +20,15 @@ impl Grammar {
         while has_changed {
             has_changed = false;
             for production in self.productions.iter() {
-                let mut is_nullable = true;
-                for letter in production.rhs.iter() {
-                    match letter {
-                        Letter::NonTerminal(idx) => {
-                            if !nullable.contains(idx) {
-                                is_nullable = false;
-                                break;
-                            }
-                        }
-                        Letter::Terminal(ch) => {
-                            if *ch != EPSILON {
-                                is_nullable = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if is_nullable && !nullable.contains(&production.lhs) {
-                    nullable.insert(production.lhs);
+                if production.check_is_nullable(&nullable)
+                    && !nullable.contains(&production.start_symbol)
+                {
+                    nullable.insert(production.start_symbol);
                     has_changed = true;
                 }
             }
         }
-        
+
         nullable
     }
 
@@ -57,10 +42,10 @@ impl Grammar {
         while has_changed {
             has_changed = false;
             self.productions.iter().for_each(|production| -> () {
-                if !reachable.contains(&production.lhs) {
+                if !reachable.contains(&production.start_symbol) {
                     return;
                 }
-                for letter in production.rhs.iter() {
+                for letter in production.expand_rule.iter() {
                     match letter {
                         Letter::NonTerminal(idx) => {
                             if !reachable.contains(idx) {
@@ -90,7 +75,7 @@ impl Grammar {
 
             self.productions.iter().for_each(|production| -> () {
                 let mut is_generator = true;
-                production.rhs.iter().for_each(|letter| -> () {
+                production.expand_rule.iter().for_each(|letter| -> () {
                     match letter {
                         Letter::NonTerminal(non_terminal) => {
                             if !generators.contains(non_terminal) {
@@ -103,7 +88,7 @@ impl Grammar {
                 });
 
                 if is_generator {
-                    generators.insert(production.lhs);
+                    generators.insert(production.start_symbol);
                     has_changed = true;
                 }
             });
@@ -116,7 +101,7 @@ impl Grammar {
     /// a unitary couple is a couple of non terminals (A, B) such that
     /// A -> B is a production in the grammar or A -> C, C -> B is a production
     /// (aka it's transitive and reflexive)
-    pub fn get_unitary_couples(&self) -> BTreeSet<(NonTerminal, NonTerminal)>  {
+    pub fn get_unitary_couples(&self) -> BTreeSet<(NonTerminal, NonTerminal)> {
         let non_terminals = self.get_non_terminal();
         let mut unitary_couples = BTreeSet::new();
         let mut has_changed = true;
@@ -124,19 +109,20 @@ impl Grammar {
         for non_terminal in non_terminals {
             unitary_couples.insert((non_terminal, non_terminal));
         }
-        
+
         while has_changed {
             has_changed = false;
             for production in self.productions.iter() {
-                if production.rhs.len() != 1 {
+                if production.expand_rule.len() != 1 {
                     continue;
                 }
                 let mut to_insert = BTreeSet::new();
                 for unitary_couple in unitary_couples.iter() {
-                    if let Letter::NonTerminal(non_term) = production.rhs[0] {
-                        if unitary_couple.1 == production.lhs && 
-                         !unitary_couples.contains(&(unitary_couple.0, non_term)) &&
-                         !to_insert.contains(&(unitary_couple.0, non_term)) {
+                    if let Letter::NonTerminal(non_term) = production.expand_rule[0] {
+                        if unitary_couple.1 == production.start_symbol
+                            && !unitary_couples.contains(&(unitary_couple.0, non_term))
+                            && !to_insert.contains(&(unitary_couple.0, non_term))
+                        {
                             to_insert.insert((unitary_couple.0, non_term));
                         }
                     }
@@ -156,8 +142,8 @@ impl Grammar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grammar::{Production};
-    
+    use crate::grammar::Production;
+
     fn get_test_grammar() -> Grammar {
         // S -> Ab | c
         // A -> aA | ε
@@ -166,10 +152,22 @@ mod tests {
         Grammar {
             start_symbol: 0,
             productions: vec![
-                Production { lhs: 0, rhs: vec![Letter::NonTerminal(1), Letter::Terminal('b')] },
-                Production { lhs: 0, rhs: vec![Letter::Terminal('c')] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1)] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal(EPSILON)] },
+                Production {
+                    start_symbol: 0,
+                    expand_rule: vec![Letter::NonTerminal(1), Letter::Terminal('b')],
+                },
+                Production {
+                    start_symbol: 0,
+                    expand_rule: vec![Letter::Terminal('c')],
+                },
+                Production {
+                    start_symbol: 1,
+                    expand_rule: vec![Letter::Terminal('a'), Letter::NonTerminal(1)],
+                },
+                Production {
+                    start_symbol: 1,
+                    expand_rule: vec![Letter::Terminal(EPSILON)],
+                },
             ],
             nullable: None,
         }

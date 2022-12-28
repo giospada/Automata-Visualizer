@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 mod app;
-mod utils;
-mod display;
 mod automata;
-mod grammar;
+mod display;
 mod error;
+mod grammar;
+mod utils;
 
 #[macro_use]
 mod macros;
@@ -31,7 +31,7 @@ fn main() {
     let mut web_options = eframe::WebOptions::default();
     web_options.default_theme = eframe::Theme::Dark;
     web_options.follow_system_theme = false;
-    
+
     eframe::start_web(
         "the_canvas_id", // hardcode it
         web_options,

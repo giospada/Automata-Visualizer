@@ -1,16 +1,8 @@
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::automata::DFA;
-use crate::grammar::{
-    Production,
-    Letter
-};
-use crate::grammar::consts::{
-    EPSILON, 
-    STRING_END,
-    Terminal,
-    NonTerminal,
-};
+use crate::grammar::consts::{NonTerminal, Terminal, EPSILON, STRING_END};
+use crate::grammar::{Letter, Production};
 
 mod helper;
 mod semplification;
@@ -25,7 +17,6 @@ pub struct Grammar {
     // this option after each update to the grammar
     nullable: Option<BTreeSet<NonTerminal>>,
 }
-
 
 impl Grammar {
     pub fn new(start_symbol: NonTerminal, productions: Vec<Production>) -> Self {
@@ -47,9 +38,10 @@ impl Grammar {
     pub fn productions_to_adj_list(&self) -> BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> {
         let mut adj_list: BTreeMap<NonTerminal, BTreeSet<Vec<Letter>>> = BTreeMap::new();
         for production in self.productions.iter() {
-            adj_list.entry(production.lhs)
+            adj_list
+                .entry(production.start_symbol)
                 .or_insert(BTreeSet::new())
-                .insert(production.rhs.clone());
+                .insert(production.expand_rule.clone());
         }
 
         adj_list
@@ -58,8 +50,8 @@ impl Grammar {
     pub fn add_fake_initial_state(&mut self) -> () {
         let new_state = self.get_non_terminal().iter().max().unwrap() + 1;
         self.productions.push(Production {
-            lhs: new_state,
-            rhs: vec![Letter::NonTerminal(self.start_symbol)]
+            start_symbol: new_state,
+            expand_rule: vec![Letter::NonTerminal(self.start_symbol)],
         });
 
         self.start_symbol = new_state;
@@ -77,17 +69,23 @@ impl<T> From<&DFA<T>> for Grammar {
             for (transition_ch, dest) in transitions.iter() {
                 let lhs = idx;
                 let rhs = vec![Letter::Terminal(*transition_ch), Letter::NonTerminal(*dest)];
-                productions.push(Production { lhs: lhs, rhs });
+                productions.push(Production {
+                    start_symbol: lhs,
+                    expand_rule: rhs,
+                });
             }
         }
 
         for end_state in dfa.get_end_states() {
             let lhs = *end_state;
             let rhs = vec![Letter::Terminal(EPSILON)];
-            productions.push(Production { lhs: lhs, rhs });
+            productions.push(Production {
+                start_symbol: lhs,
+                expand_rule: rhs,
+            });
         }
 
-        Self { 
+        Self {
             start_symbol: dfa.get_start_state(),
             productions,
 
@@ -99,31 +97,31 @@ impl<T> From<&DFA<T>> for Grammar {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::map;
     use crate::automata::DFA;
+    use crate::map;
 
     #[test]
     fn test_dfa_conversion() {
         // this dfa should recognize ba*
         let dfa: DFA<usize> = DFA::from_state(
             3,
-            0, 
-            vec![1], 
+            0,
+            vec![1],
             vec![
-                map! { 
+                map! {
                     'a' => 2,
                     'b' => 1
                 },
-                map! { 
+                map! {
                     'a' => 1,
                     'b' => 2
                 },
-                map! { 
+                map! {
                     'a' => 2,
                     'b' => 2
                 },
-            ],            
-            None
+            ],
+            None,
         );
 
         let grammar = Grammar::from(&dfa);
@@ -132,13 +130,34 @@ mod test {
         let result = Grammar {
             start_symbol: 0,
             productions: vec![
-                Production { lhs: 0, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(2)] },
-                Production { lhs: 0, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(1)] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(1)] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(2)] },
-                Production { lhs: 2, rhs: vec![Letter::Terminal('a'), Letter::NonTerminal(2)] },
-                Production { lhs: 2, rhs: vec![Letter::Terminal('b'), Letter::NonTerminal(2)] },
-                Production { lhs: 1, rhs: vec![Letter::Terminal(EPSILON)] },
+                Production {
+                    start_symbol: 0,
+                    expand_rule: vec![Letter::Terminal('a'), Letter::NonTerminal(2)],
+                },
+                Production {
+                    start_symbol: 0,
+                    expand_rule: vec![Letter::Terminal('b'), Letter::NonTerminal(1)],
+                },
+                Production {
+                    start_symbol: 1,
+                    expand_rule: vec![Letter::Terminal('a'), Letter::NonTerminal(1)],
+                },
+                Production {
+                    start_symbol: 1,
+                    expand_rule: vec![Letter::Terminal('b'), Letter::NonTerminal(2)],
+                },
+                Production {
+                    start_symbol: 2,
+                    expand_rule: vec![Letter::Terminal('a'), Letter::NonTerminal(2)],
+                },
+                Production {
+                    start_symbol: 2,
+                    expand_rule: vec![Letter::Terminal('b'), Letter::NonTerminal(2)],
+                },
+                Production {
+                    start_symbol: 1,
+                    expand_rule: vec![Letter::Terminal(EPSILON)],
+                },
             ],
             nullable: None,
         };

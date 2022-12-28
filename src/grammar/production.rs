@@ -1,7 +1,6 @@
-use crate::grammar::consts::{
-    Terminal,
-    NonTerminal,
-};
+use crate::grammar::consts::{NonTerminal, Terminal};
+
+mod helper;
 
 #[derive(Debug, PartialEq, Clone, PartialOrd, Eq, Ord)]
 pub enum Letter {
@@ -11,8 +10,8 @@ pub enum Letter {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Production {
-    pub lhs: NonTerminal,
-    pub rhs: Vec<Letter>,
+    pub start_symbol: NonTerminal,
+    pub expand_rule: Vec<Letter>,
 }
 
 impl Production {
@@ -35,3 +34,4 @@ impl Production {
         Some(&letters[n])
     }
 }
+
