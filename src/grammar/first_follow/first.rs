@@ -31,12 +31,14 @@ pub fn compute_first(
     });
     first_table
 }
+
 pub fn get_first_letter(first: &FirstTable, letter: &Letter) -> BTreeSet<Terminal> {
     match letter {
         Letter::NonTerminal(idx) => first[*idx].clone(),
         Letter::Terminal(ch) => BTreeSet::from([*ch]),
     }
 }
+
 //TODO: add tests
 pub fn get_first<'a, T>(first: &FirstTable, iter: &mut T) -> BTreeSet<Terminal>
 where

@@ -2,11 +2,8 @@ use std::collections::BTreeSet;
 
 use crate::grammar::{
     consts::{NonTerminal, Terminal, EPSILON},
-    Grammar, Letter, Production,
+    Grammar, Letter, Production
 };
-
-use self::first::compute_first;
-use crate::grammar::first_follow::follow::compute_follow;
 
 mod first;
 mod follow;
@@ -48,8 +45,8 @@ impl From<&Grammar> for FirstFollowTable {
         let num_non_terminal = grammar.get_non_terminal().len();
 
         let nullable = compute_nullable(grammar, num_non_terminal);
-        let first = compute_first(grammar, num_non_terminal, &nullable);
-        let follow = compute_follow(grammar, num_non_terminal, &first);
+        let first = first::compute_first(grammar, num_non_terminal, &nullable);
+        let follow = follow::compute_follow(grammar, num_non_terminal, &first);
 
         FirstFollowTable {
             first,
