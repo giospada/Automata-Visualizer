@@ -1,10 +1,8 @@
-use log::info;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use serde::{Serialize, Deserialize};
-
 
 use crate::automata::regular_expression as RE;
-use crate::display::DisplayGraph;
+
 use crate::utils::{Graph, IntoGraph};
 
 mod string_transform;

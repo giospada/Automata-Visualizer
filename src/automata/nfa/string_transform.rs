@@ -4,8 +4,6 @@ use super::NFA;
 
 //TODO rifare tutto con strade
 use nom::{
-    bytes::complete::take,
-    bytes::complete::take_while1,
     bytes::streaming::tag,
     character::complete::{char, one_of},
     character::complete::{digit1, multispace0},
@@ -15,12 +13,10 @@ use nom::{
     IResult,
 };
 
-const START_STATE_LABEL:&str= "start_state";
-const NUM_STATE_LABEL:&str= "num_states";
-const END_STATES_LABEL:&str= "end_states";
+const START_STATE_LABEL: &str = "start_state";
+const NUM_STATE_LABEL: &str = "num_states";
+const END_STATES_LABEL: &str = "end_states";
 const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-
-
 
 fn read_num(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |digit_str: &str| digit_str.parse::<usize>())(input)
@@ -38,7 +34,6 @@ fn read_start_stete(input: &str) -> IResult<&str, usize> {
 fn read_num_states(input: &str) -> IResult<&str, usize> {
     preceded(custom_label(NUM_STATE_LABEL), read_num)(input)
 }
-
 
 fn read_char(input: &str) -> IResult<&str, char> {
     preceded(
@@ -72,7 +67,6 @@ fn read_transiction(input: &str) -> IResult<&str, (usize, usize, char)> {
 fn read_all_transictions(input: &str) -> IResult<&str, Vec<(usize, usize, char)>> {
     separated_list0(multispace0, read_transiction)(input)
 }
-
 
 impl TryFrom<&str> for NFA {
     // TODO: maybe we can change it

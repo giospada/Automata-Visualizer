@@ -1,19 +1,16 @@
 use eframe::egui;
-use egui::SidePanel;
+use egui::{CentralPanel, SidePanel};
 
-use crate::display::RegularLanguageGui;
-
-
+use crate::display::RegularGui;
 
 pub struct EguiApp {
-    leftpanel:RegularLanguageGui,
+    regular_gui: RegularGui,
 }
 
 impl Default for EguiApp {
     fn default() -> Self {
         Self {
-            leftpanel:RegularLanguageGui::new()
-
+            regular_gui: RegularGui::new(),
         }
     }
 }
@@ -22,15 +19,19 @@ impl EguiApp {
     pub fn new(_cc: &eframe::CreationContext) -> Self {
         Self::default()
     }
-
 }
-
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        SidePanel::left("Main").show(ctx, |ui| {
-            self.leftpanel.draw_left_panel(ui);
+        SidePanel::left("Left").show(ctx, |ui| {
+            self.regular_gui.draw_left_panel(ui);
         });
-       self.leftpanel.draw_visualizer_windows(ctx); 
+        SidePanel::right("Right").show(ctx, |ui| {
+            self.regular_gui.draw_right_panel(ui);
+        });
+
+        CentralPanel::default().show(ctx, |ui| {
+            self.regular_gui.center_panel(ui);
+        });
     }
 }
