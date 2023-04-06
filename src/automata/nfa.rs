@@ -20,7 +20,7 @@ pub struct NFA {
 }
 
 impl NFA {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             num_states: 0,
             start_state: 0,

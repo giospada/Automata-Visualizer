@@ -5,11 +5,11 @@
 // use crate::display::DisplayGraph;
 //
 // use super::DisplayGraphParameter;
-
+//
 // /// this struct rappresent a visualizer of a graph
 // /// it contains the information to show the window and display the graph
 //
-// if Return a String it return an error
+// /// if Return a String it return an error
 // pub type FromFunction = fn(
 //     &mut Ui,
 //     &mut RegularGrammarObjects,

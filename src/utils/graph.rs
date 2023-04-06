@@ -13,7 +13,6 @@ pub trait IntoGraph {
     fn into_graph(&self) -> Graph;
 }
 
-
 pub struct Edge {
     // maybe label can be set to a generic type
     pub id: IndEdge,
