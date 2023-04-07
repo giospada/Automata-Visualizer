@@ -4,7 +4,7 @@ use egui::{
     emath::RectTransform, epaint::CubicBezierShape, Color32, Painter, Pos2, Rect, Sense, Stroke,
     Vec2,
 };
-use std::collections::BTreeMap;
+use std::{cmp::max, collections::BTreeMap};
 
 const ARROW_TIP_LENGHT: f32 = 10.;
 const ARROW_WIDTH: f32 = 3.;
@@ -39,6 +39,7 @@ pub struct DisplayGraphParameter {
     pub padding_x: f32,
     pub padding_y: f32,
     pub node_size: f32,
+    pub canvas_size: Vec2,
     // we can add more parameters here as we need them or like the color of node edge etc..
 }
 
@@ -48,6 +49,7 @@ impl DisplayGraphParameter {
             padding_x: -1.,
             padding_y: -1.,
             node_size: -1.,
+            canvas_size: Vec2::new(0., 0.),
         }
     }
 }
@@ -118,8 +120,8 @@ impl DisplayGraph {
             bfs_depth as f32 * (params.node_size + params.padding_y) + params.padding_y;
 
         Vec2 {
-            x: width_painting_area,
-            y: height_painting_area,
+            x: width_painting_area.max(params.canvas_size.x),
+            y: height_painting_area.max(params.canvas_size.y),
         }
     }
 

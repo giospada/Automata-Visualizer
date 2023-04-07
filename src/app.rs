@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui::{CentralPanel, SidePanel};
+use egui::{panel::TopBottomSide, CentralPanel, SidePanel, TopBottomPanel};
 
 use crate::display::RegularGui;
 
@@ -29,7 +29,9 @@ impl eframe::App for EguiApp {
         SidePanel::right("Right").show(ctx, |ui| {
             self.regular_gui.draw_right_panel(ui);
         });
-
+        TopBottomPanel::bottom("Visualizer").show(ctx, |ui| {
+            self.regular_gui.draw_bottom_panel(ui);
+        });
         CentralPanel::default().show(ctx, |ui| {
             self.regular_gui.center_panel(ui);
         });
