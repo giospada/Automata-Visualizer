@@ -1,11 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::automata::NFA;
 use crate::automata::regular_expression as RE;
-use crate::utils::{Graph, IndEdge, IndNode};
+use crate::automata::NFA;
 use crate::utils::DisjointUnionFind;
+use crate::utils::IntoGraph;
+use crate::utils::{Graph, IndEdge, IndNode};
 
-type NfaStates = BTreeSet<usize>;
+pub type NfaStates = BTreeSet<usize>;
 
 #[derive(Debug, Clone)]
 pub struct DFA<T> {
@@ -22,7 +23,7 @@ pub struct DFA<T> {
 const INVALID_STATE: i32 = -1;
 
 impl<T> DFA<T> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             num_states: 0,
             start_state: 0,
@@ -106,7 +107,7 @@ impl<T> DFA<T> {
                 new_transitions[*idx].insert(*transition_ch, *head_to_idx.get(&dest_head).unwrap());
             }
         }
-        
+
         // create new end states, these should be unique
         let mut new_end_states = BTreeSet::new();
         for end_state in self.end_states.iter() {
@@ -117,7 +118,9 @@ impl<T> DFA<T> {
         Self {
             num_states,
 
-            start_state: *head_to_idx.get(&unequal_sets.find(self.start_state)).unwrap(),
+            start_state: *head_to_idx
+                .get(&unequal_sets.find(self.start_state))
+                .unwrap(),
             end_states: new_end_states.into_iter().collect(),
             transitions: new_transitions,
             alphabet: self.alphabet.clone(),
@@ -217,12 +220,14 @@ impl<T> DFA<T> {
     fn add_state(dfa: &mut DFA<T>, states: T) -> usize {
         dfa.transitions.push(BTreeMap::new());
 
-            
         if let Some(map) = &mut dfa.idx_to_data {
             map.insert(dfa.num_states, states);
         } else {
             dfa.idx_to_data = Some(BTreeMap::new());
-            dfa.idx_to_data.as_mut().unwrap().insert(dfa.num_states, states);
+            dfa.idx_to_data
+                .as_mut()
+                .unwrap()
+                .insert(dfa.num_states, states);
         }
 
         dfa.num_states += 1;
@@ -276,8 +281,8 @@ impl From<&RE::ReOperator> for DFA<NfaStates> {
     }
 }
 
-impl<T> Into<Graph> for DFA<T> {
-    fn into(self) -> Graph {
+impl<T> IntoGraph for DFA<T> {
+    fn into_graph(&self) -> Graph {
         let mut graph = Graph::new();
 
         let finals_nodes = self

@@ -1,5 +1,7 @@
 mod display_graph;
-mod visualizer;
+mod regular_gui;
+// mod visualizer;
 
 pub use display_graph::*;
-pub use visualizer::*;
+pub use regular_gui::*;
+// pub use visualizer::*;

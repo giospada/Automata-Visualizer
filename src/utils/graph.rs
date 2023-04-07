@@ -9,6 +9,9 @@ pub type IndNode = usize;
 /// Index of a edge, this type makes soure that is returned by the graph
 pub type IndEdge = usize;
 
+pub trait IntoGraph {
+    fn into_graph(&self) -> Graph;
+}
 
 pub struct Edge {
     // maybe label can be set to a generic type
